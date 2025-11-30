@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+# 修正導入：直接 import 模組名稱
 from data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
 from rules import generate_random_gua, generate_full_life_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference
 
@@ -15,16 +16,13 @@ def display_piece(gua_data, pos_num):
         name, color = piece[1], piece[2]
         image_path = get_image_path(name, color) 
         
-        # 顯示標題
         st.markdown(f"<div style='text-align: center; font-size: 14px; margin-bottom: 2px;'>{POSITION_MAP[pos_num]['名稱']}</div>", unsafe_allow_html=True)
         
-        # 顯示圖片
         if image_path and os.path.exists(image_path):
             st.image(image_path, caption=f"{color}{name}", width=70)
         else:
             st.warning(f"{color}{name}")
             
-        # 顯示關係
         st.markdown(f"<div style='text-align: center; font-size: 10px; color: #888;'>{POSITION_MAP[pos_num]['關係']}</div>", unsafe_allow_html=True)
     except StopIteration:
         st.empty()
@@ -50,13 +48,12 @@ st.title("🔮 專業象棋占卜系統：洞悉棋局，掌握人生格局")
 st.markdown("---")
 
 # ----------------------------------------------
-# 側邊欄與狀態初始化 (修正區)
+# 側邊欄與狀態初始化
 # ----------------------------------------------
-# 【修正點】在此處補齊所有可能的 session_state 變數初始化
 if 'reroll_count' not in st.session_state: st.session_state.reroll_count = 0
 if 'final_result_status' not in st.session_state: st.session_state.final_result_status = "INIT"
 if 'current_mode' not in st.session_state: st.session_state.current_mode = "SINGLE"
-if 'sub_query' not in st.session_state: st.session_state.sub_query = "問運勢" # 給予預設值防止報錯
+if 'sub_query' not in st.session_state: st.session_state.sub_query = "問運勢"
 if 'message' not in st.session_state: st.session_state.message = ""
 if 'current_gua' not in st.session_state: st.session_state.current_gua = []
 
@@ -74,7 +71,6 @@ with st.sidebar:
         ]
     )
     
-    # 預設 sub_query 為 "問運勢"，避免變數未定義
     current_sub_query_selection = "問運勢"
     
     if query_type == "單卦問事 (運勢/財運/感情)":
@@ -82,7 +78,6 @@ with st.sidebar:
         if current_sub_query_selection == "投資/財運":
             st.date_input("4. 獲利時間點", value=None)
     
-    # 按鈕邏輯
     if st.button("開始排盤 / 占卜"):
         if query_type == "全盤流年 (11~80歲完整排盤)":
             st.session_state.current_mode = "FULL"
@@ -93,9 +88,8 @@ with st.sidebar:
                 st.session_state.message = "全盤流年排佈完成！"
         else:
             st.session_state.current_mode = "SINGLE"
-            st.session_state.sub_query = current_sub_query_selection # 將選擇存入 session_state
+            st.session_state.sub_query = current_sub_query_selection
             
-            # 單卦重抽邏輯
             new_gua = generate_random_gua()
             if is_all_same_color(new_gua):
                 st.session_state.reroll_count += 1
@@ -127,9 +121,7 @@ with st.sidebar:
 if st.session_state.final_result_status == "INIT": st.info("請點擊左側按鈕開始。"); st.stop()
 if st.session_state.final_result_status == "REJECTED": st.error(st.session_state.message); st.stop() 
 
-# ==============================================================================
 # 模式 A: 全盤流年顯示
-# ==============================================================================
 if st.session_state.current_mode == "FULL":
     full_data = st.session_state.full_life_gua
     
@@ -149,15 +141,12 @@ if st.session_state.current_mode == "FULL":
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
         
-        # 視覺化排盤 (4, 1, 2, 3, 5)
         c1, c2, c3 = st.columns([1, 1, 1])
         with c2: display_piece(gua, 4)
-        
         c4, c5, c6 = st.columns([1, 1, 1])
         with c4: display_piece(gua, 2)
         with c5: display_piece(gua, 1)
         with c6: display_piece(gua, 3)
-        
         c7, c8, c9 = st.columns([1, 1, 1])
         with c8: display_piece(gua, 5)
         
@@ -176,18 +165,14 @@ if st.session_state.current_mode == "FULL":
             
         center_piece = next(p for p in gua if p[0] == 1)
         st.caption(f"**核心主導 ({stage})：** {center_piece[2]}{center_piece[1]} - {ATTRIBUTES.get(center_piece[1], {}).get('特質', '')}")
-        
         st.markdown("</div>", unsafe_allow_html=True)
 
     st.warning("⚠️ **71~80歲及晚年：** 需參照餘棋或重新起卦進行專項健康分析。")
 
-
-# ==============================================================================
 # 模式 B: 單卦問事
-# ==============================================================================
 elif st.session_state.current_mode == "SINGLE":
     current_gua = st.session_state.current_gua
-    sub_query = st.session_state.sub_query # 這裡讀取之前初始化的變數，不會再報錯
+    sub_query = st.session_state.sub_query
     
     analysis_results = calculate_net_gain_from_gua(current_gua) 
     health_analysis = analyze_health_and_luck(current_gua)
@@ -226,6 +211,7 @@ elif st.session_state.current_mode == "SINGLE":
         elif sub_query == "前世格局":
              piece_1 = next(p for p in current_gua if p[0] == 1)
              st.write(f"前世身分參考：{piece_1[1]}")
-        # 其餘通用
+        elif sub_query == "離婚議題" and gender == "女":
+             st.warning("請留意好朋友格在2-3或4-5的影響。")
         else:
             st.info("請參考通用運勢分析。")
