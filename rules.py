@@ -1,5 +1,5 @@
 import random
-from data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION, FIVE_ELEMENTS_DETAILS, ENERGY_REMEDIES
+from data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION, FIVE_ELEMENTS_DETAILS, ENERGY_REMEDIES, PIECE_SYMBOLISM, SYMBOL_KEY_MAP
 
 # ==============================================================================
 # 輔助：棋子類型映射
@@ -124,7 +124,6 @@ def can_eat(eater_pos, target_pos, current_gua):
 # --- 深度分析函數 ---
 
 def analyze_trinity_detailed(current_gua):
-    """詳細的三才缺失分析 (天地人)"""
     p1 = next(p for p in current_gua if p[0] == 1)
     p4 = next(p for p in current_gua if p[0] == 4)
     p5 = next(p for p in current_gua if p[0] == 5)
@@ -152,57 +151,32 @@ def analyze_trinity_detailed(current_gua):
     return result
 
 def analyze_body_hologram(current_gua):
-    """【新增】身體全息圖深度診斷 (中醫體檢)"""
-    from data import POSITION_MAP # Local import to avoid circular dependency
     diagnosis = []
-    
     for pos, name, color, val in current_gua:
-        # 身體鏡像原理：左對右，右對左
-        trait = ATTRIBUTES.get(name, {}).get('特質', '')
         element = ATTRIBUTES.get(name, {}).get('五行', '')
         color_nature = "發炎/急性/燥熱" if color == "紅" else "氣滯/慢性/寒濕"
         
-        # 1. 頭部 (Pos 4)
         if pos == 4:
-            if name in ['炮', '包']:
-                diagnosis.append(f"🔴 **頭部 ({color}{name})**：可能**頭痛、失眠**或神經衰弱。({color_nature})")
-            elif name in ['車', '俥'] and color == '紅':
-                diagnosis.append(f"🔴 **頭部 ({color}{name})**：紅車衝撞，留意**血壓高**或頭部脹痛。")
-            elif element == "金" and color == "黑":
-                diagnosis.append(f"🔵 **頭部 ({color}{name})**：悲觀思慮重，頭昏沉感。")
-
-        # 2. 下肢 (Pos 5)
+            if name in ['炮', '包']: diagnosis.append(f"🔴 **頭部 ({color}{name})**：可能**頭痛、失眠**或神經衰弱。({color_nature})")
+            elif name in ['車', '俥'] and color == '紅': diagnosis.append(f"🔴 **頭部 ({color}{name})**：紅車衝撞，留意**血壓高**或頭部脹痛。")
+            elif element == "金" and color == "黑": diagnosis.append(f"🔵 **頭部 ({color}{name})**：悲觀思慮重，頭昏沉感。")
         elif pos == 5:
-            if name in ['馬', '傌']:
+            if name in ['馬', '傌']: 
                 symptom = "關節炎" if color == "紅" else "舊傷痠痛"
                 diagnosis.append(f"🦵 **下肢/膝蓋 ({color}{name})**：留意膝蓋卡卡或無力。{symptom}。")
-            elif name in ['包', '炮']:
-                diagnosis.append(f"💧 **下肢/泌尿 ({color}{name})**：留意**水腫**、婦科或泌尿系統。")
-            elif element == "土":
-                diagnosis.append(f"🦵 **下肢 ({color}{name})**：腿部肌肉容易乏力。")
-
-        # 3. 左右手/肩 (Pos 2 & 3 - 鏡像原理)
+            elif name in ['包', '炮']: diagnosis.append(f"💧 **下肢/泌尿 ({color}{name})**：留意**水腫**、婦科或泌尿系統。")
+            elif element == "土": diagnosis.append(f"🦵 **下肢 ({color}{name})**：腿部肌肉容易乏力。")
         elif pos in [2, 3]:
             side = "👉 右側" if pos == 2 else "👈 左側"
-            if name in ['卒', '兵']:
-                diagnosis.append(f"💪 **{side} 肩頸/手臂 ({color}{name})**：僵硬如石，氣血卡住。")
-            elif name in ['車', '俥']:
-                diagnosis.append(f"💪 **{side} 手部 ({color}{name})**：可能曾扭傷或過度使用痠痛。")
-                
-        # 4. 軀幹 (Pos 1)
+            if name in ['卒', '兵']: diagnosis.append(f"💪 **{side} 肩頸/手臂 ({color}{name})**：僵硬如石，氣血卡住。")
+            elif name in ['車', '俥']: diagnosis.append(f"💪 **{side} 手部 ({color}{name})**：可能曾扭傷或過度使用痠痛。")
         elif pos == 1:
-            if element == "木" and color == "黑":
-                diagnosis.append(f"❤️ **胸腹核心 ({color}{name})**：肝氣鬱結，胸悶氣不順。")
-            elif element == "土" and color == "紅":
-                diagnosis.append(f"🌭 **腸胃核心 ({color}{name})**：胃火旺，易有胃食道逆流。")
-
+            if element == "木" and color == "黑": diagnosis.append(f"❤️ **胸腹核心 ({color}{name})**：肝氣鬱結，胸悶氣不順。")
+            elif element == "土" and color == "紅": diagnosis.append(f"🌭 **腸胃核心 ({color}{name})**：胃火旺，易有胃食道逆流。")
     return diagnosis
 
 def analyze_holistic_health(current_gua):
-    """中醫五行身心深度診斷 (層次 1, 2, 3)"""
     report = {"core": {}, "balance": {"excess": [], "lack": []}, "interaction": []}
-    
-    # 1. 核心體質
     center_piece = next(p for p in current_gua if p[0] == 1)
     center_name = center_piece[1]
     center_elm = ATTRIBUTES.get(center_name, {}).get("五行")
@@ -210,7 +184,6 @@ def analyze_holistic_health(current_gua):
         details = FIVE_ELEMENTS_DETAILS.get(center_elm)
         report["core"] = {"name": f"{center_piece[2]}{center_name}", "element": center_elm, "psycho": details["psycho_msg"], "physio": details["physio_msg"], "advice": details["advice"]}
 
-    # 2. 盤面多寡
     element_counts = {"木": 0, "火": 0, "土": 0, "金": 0, "水": 0}
     for pos, name, color, val in current_gua:
         elm = ATTRIBUTES.get(name, {}).get("五行")
@@ -226,7 +199,6 @@ def analyze_holistic_health(current_gua):
             msg = f"**缺{elm}：** 需留意相關臟腑功能。"
             report["balance"]["lack"].append(msg)
 
-    # 3. 攻擊與消耗
     center_pos = 1
     neighbors = [2, 3, 4, 5]
     for neighbor_pos in neighbors:
@@ -234,29 +206,19 @@ def analyze_holistic_health(current_gua):
         neighbor_name = neighbor[1]
         neighbor_elm = ATTRIBUTES.get(neighbor_name, {}).get("五行")
         neighbor_str = f"{neighbor[2]}{neighbor_name}"
-        
         if can_eat(neighbor_pos, center_pos, current_gua):
             msg = f"受到 **{neighbor_str} ({neighbor_elm})** 的攻擊 (剋應)。"
-            if neighbor_elm == "木" and center_elm == "土": msg += " (木剋土: 怒傷胃)"
-            elif neighbor_elm == "金" and center_elm == "木": msg += " (金剋木: 憂傷肝)"
             report["interaction"].append(msg)
         elif neighbor[2] == center_piece[2] and neighbor_elm == center_elm:
             msg = f"與 **{neighbor_str}** 形成消耗。"
-            if center_elm == "金": msg += " (金金自刑: 憂傷肺)"
-            elif center_elm == "土": msg += " (土土消耗: 思傷胃)"
             report["interaction"].append(msg)
-
     return report
 
 def analyze_health_and_luck(current_gua):
-    """【更新】分析氣血狀況，使用新的 ENERGY_REMEDIES"""
-    analysis = {'red_count': 0, 'black_count': 0, 'missing_elements': {'木': True, '火': True, '土': True, '金': True, '水': True}, 'health_warnings': [], 'remedy': {}}
+    analysis = {'red_count': 0, 'black_count': 0, 'health_warnings': [], 'remedy': {}}
     for pos, name, color, val in current_gua:
         analysis['red_count'] += (color == '紅')
         analysis['black_count'] += (color == '黑')
-        element = ATTRIBUTES.get(name, {}).get('五行', 'N/A')[0]
-        if element != 'N': analysis['missing_elements'][element] = False
-    
     if analysis['red_count'] > analysis['black_count']:
         remedy = ENERGY_REMEDIES["Red"]
         analysis['remedy'] = remedy
@@ -267,11 +229,9 @@ def analyze_health_and_luck(current_gua):
         analysis['health_warnings'].append(f"💧 **{remedy['status']}**：{remedy['advice']}")
     else:
         analysis['remedy'] = {"status": "⚖️ 氣血平衡", "method": "維持現狀", "principle": "陰陽調和。", "advice": "目前氣血比例適中。"}
-        
     return analysis
 
 def analyze_coordinate_map(current_gua, gender):
-    """【新增】座標地圖深度解析 (SOP)"""
     p1 = next(p for p in current_gua if p[0] == 1)
     p4 = next(p for p in current_gua if p[0] == 4)
     p5 = next(p for p in current_gua if p[0] == 5)
@@ -279,24 +239,19 @@ def analyze_coordinate_map(current_gua, gender):
     p3 = next(p for p in current_gua if p[0] == 3)
     
     report = {"center_status": "", "top_support": "", "bottom_foundation": "", "love_relationship": "", "peer_relationship": ""}
-    
-    # A. 中格
     p1_attr = ATTRIBUTES.get(p1[1], {})
     report["center_status"] = f"核心是 **{p1[2]}{p1[1]}** ({p1_attr.get('特質')})。處於{p1_attr.get('五行')}行能量狀態。"
     
-    # B. 上格
     if check_good_friend(p1, p4): report["top_support"] = "🌟 **貴人提拔：** 長官/長輩疼愛，資源豐富。"
     elif can_eat(4, 1, current_gua): report["top_support"] = "⚡ **上司施壓：** 主管給壓力，或長輩身體欠安。"
     elif check_consumption(p1, p4): report["top_support"] = "🌀 **溝通消耗：** 與長輩/主管觀念不合。"
     else: report["top_support"] = "☁️ **關係平淡：** 凡事多靠自己。"
 
-    # C. 下格
     if can_eat(5, 1, current_gua): report["bottom_foundation"] = "⚠️ **根基受損：** 下屬造反或錢財留不住。"
     elif can_eat(1, 5, current_gua): report["bottom_foundation"] = "✊ **掌控大局：** 能掌握資源，結局主導。"
     elif check_good_friend(p1, p5): report["bottom_foundation"] = "🌲 **根基穩固：** 基礎紮實，晚運佳。"
     else: report["bottom_foundation"] = "🍂 **漂泊無根：** 地格連結弱，適合保守。"
 
-    # D. 水平軸線
     target_love_pos = 2 if gender == "男" else 3
     target_peer_pos = 3 if gender == "男" else 2
     p_love = p2 if gender == "男" else p3
@@ -312,7 +267,6 @@ def analyze_coordinate_map(current_gua, gender):
     if can_eat(target_peer_pos, 1, current_gua): report["peer_relationship"] = f"🔪 **犯小人：** 留意{peer_role}扯後腿。"
     elif check_good_friend(p1, p_peer): report["peer_relationship"] = f"🤝 **得力夥伴：** {peer_role}是貴人，適合合作。"
     else: report["peer_relationship"] = f"Run **各自努力：** {peer_role}影響不大。"
-
     return report
 
 def check_consumption_at_1_or_5(current_gua):
@@ -360,42 +314,89 @@ def check_wealth_pattern(current_gua):
     return False
 
 def calculate_net_gain_from_gua(current_gua):
-    interactions = []
-    for pos_a, name_a, color_a, val_a in current_gua:
-        for pos_b, name_b, color_b, val_b in current_gua:
-            if pos_a == pos_b: continue
-            if can_eat(pos_a, pos_b, current_gua):
-                gain_value = val_b * 0.5
-                is_full_eat = False
-                if name_a in ['兵', '卒'] and name_b in ['將', '帥']:
-                    gain_value = val_b * 1.0
-                    is_full_eat = True
-                elif VALUE_MAP[name_a] > VALUE_MAP[name_b]: 
-                    is_full_eat = True
-                    gain_value = val_b * 1.0
-                if name_a in ['象', '相'] and name_b in ['車', '俥']:
-                    gain_value = val_b * 0.5
-                    is_full_eat = False
-                interactions.append({
-                    "eater_pos": pos_a, "target_pos": pos_b, "eater_name": name_a, "target_name": name_b, 
-                    "value": gain_value, "is_full_eat": is_full_eat, "target_initial_value": val_b,
-                    "gain": gain_value * 10, "cost": val_a
-                })
-    total_gain = 0.0
-    interactions_by_eater = {}
-    for i in interactions:
-        pos = i['eater_pos']
-        interactions_by_eater.setdefault(pos, []).append(i)
-    for eater_pos, interactions_list in interactions_by_eater.items():
-        if eater_pos == 1:
-            total_gain += sum(i['value'] for i in interactions_list)
-            continue
-        interactions_list.sort(key=lambda x: x['value'], reverse=True)
-        if not interactions_list: continue
-        first_interaction = interactions_list[0]
-        if first_interaction['is_full_eat']:
-            counter_attack_found = any(i['eater_pos'] == first_interaction['target_pos'] and i['target_pos'] == eater_pos for i in interactions)
-            if not counter_attack_found: total_gain += sum(i['value'] for i in interactions_list[:3])
-        else: total_gain += first_interaction['value']
-    total_cost = sum(p[3] for p in current_gua) * 0.1 
-    return {"gain": round(total_gain, 1), "cost": round(total_cost, 1), "net_gain": round(total_gain - total_cost, 1), "interactions": interactions}
+    """(舊版相容用，實際上會呼叫 calculate_score_by_mode)"""
+    res = calculate_score_by_mode(current_gua, mode="investment")
+    return {"gain": res["score_A"], "cost": res["score_B"], "net_gain": res["net_score"], "interactions": []}
+
+def calculate_score_by_mode(current_gua, mode="general"):
+    """
+    【新增】多模式量化計分引擎 (Universal Scoring Engine)
+    mode: 'general', 'career', 'karma', 'health', 'investment', 'love', 'divorce'
+    """
+    center_piece = next(p for p in current_gua if p[0] == 1)
+    neighbors = [p for p in current_gua if p[0] != 1]
+    
+    report = {"score_A": 0.0, "score_B": 0.0, "net_score": 0.0, "label_A": "", "label_B": "", "label_Net": "", "details_A": [], "details_B": [], "interpretation": ""}
+    
+    labels = {
+        "general": ("環境助力 (+)", "環境壓力 (-)", "運勢損益"),
+        "career": ("掌控權 (+)", "被剝奪感 (-)", "權力指數"),
+        "karma": ("索取/討債 (+)", "虧欠/償債 (-)", "因果餘額"),
+        "health": ("吸收力 (身吃藥)", "修復力 (藥修身)", "療癒效能"),
+        "investment": ("收穫 (利潤)", "成本 (風險)", "投資淨利"),
+        "love": ("對方愛我 (他吃我)", "我愛對方 (我吃他)", "情感權重"),
+        "divorce": ("自由度 (反擊)", "損耗度 (被吃)", "離異指數")
+    }
+    lbl_A, lbl_B, lbl_Net = labels.get(mode, labels["general"])
+    report["label_A"], report["label_B"], report["label_Net"] = lbl_A, lbl_B, lbl_Net
+
+    for neighbor in neighbors:
+        pos_n = neighbor[0]; name_n = neighbor[1]; val_n = VALUE_MAP.get(name_n, 0)
+        pos_c = center_piece[0]; name_c = center_piece[1]; val_c = VALUE_MAP.get(name_c, 0)
+        
+        gain = 0
+        if can_eat(pos_c, pos_n, current_gua):
+            if name_c in ['象','相'] and name_n in ['車','俥']: gain = val_n * 0.5
+            elif name_c in ['兵','卒'] and name_n in ['將','帥']: gain = val_n * 1.0
+            else: gain = val_n
+        elif check_good_friend(center_piece, neighbor):
+            if mode not in ['love', 'health']: gain = val_n * 0.5
+
+        cost = 0
+        if can_eat(pos_n, pos_c, current_gua):
+            if name_n in ['象','相'] and name_c in ['車','俥']: cost = val_c * 0.5
+            elif name_n in ['兵','卒'] and name_c in ['將','帥']: cost = val_c * 1.0
+            else: cost = val_c
+        elif check_good_friend(center_piece, neighbor):
+            if mode not in ['love', 'health']: cost = val_c * 0.5
+
+        if mode == 'health':
+            if gain > 0: report["score_A"] += gain; report["details_A"].append(f"吃 {name_n}: 吸收 {gain} 分")
+            if cost > 0: report["score_B"] += cost; report["details_B"].append(f"被 {name_n} 吃: 修復 {cost} 分")
+        elif mode == 'love':
+            if cost > 0: report["score_A"] += cost; report["details_A"].append(f"被 {name_n} 吃: 對方主導 {cost} 分")
+            if gain > 0: report["score_B"] += gain; report["details_B"].append(f"吃 {name_n}: 我方付出 {gain} 分")
+        else:
+            if gain > 0: report["score_A"] += gain; report["details_A"].append(f"吃 {name_n}: +{gain}")
+            if cost > 0: report["score_B"] += cost; report["details_B"].append(f"被 {name_n} 吃: -{cost}")
+
+    if mode == 'health':
+        if report["score_A"] > 0 and report["score_B"] > 0: report["net_score"] = report["score_A"] + report["score_B"]; report["interpretation"] = "🌟 **完美互補：** 吸收與修復兼具。"
+        elif report["score_A"] > 0: report["net_score"] = report["score_A"]; report["interpretation"] = "⚠️ **只吃不被吃：** 可吸收但無對症修復效果。"
+        elif report["score_B"] > 0: report["net_score"] = report["score_B"]; report["interpretation"] = "⚠️ **被吃不可吃：** 有療效但身體虛不受補。"
+        else: report["interpretation"] = "無明顯能量互動。"
+    elif mode == 'love':
+        diff = report["score_A"] - report["score_B"]; report["net_score"] = diff
+        if diff > 5: report["interpretation"] = "❤️ **他愛你較多：** 對方主導或付出較多。"
+        elif diff < -5: report["interpretation"] = "💔 **你愛他較多：** 您付出較多。"
+        else: report["interpretation"] = "⚖️ **關係對等：** 勢均力敵。"
+    else:
+        report["net_score"] = report["score_A"] - report["score_B"]
+        net = report["net_score"]
+        if mode == 'investment': report["interpretation"] = "📈 **獲利：** 投資可行。" if net > 0 else "💸 **虧損：** 建議勿投。"
+        elif mode == 'general': report["interpretation"] = "🚀 **運勢上揚：** 助力大。" if net > 0 else "🛡️ **運勢低迷：** 壓力大。"
+        
+    return report
+
+def get_advanced_piece_analysis(current_gua):
+    center_piece = next(p for p in current_gua if p[0] == 1)
+    name = center_piece[1]
+    symbol_key = SYMBOL_KEY_MAP.get(name, "兵卒")
+    symbol_data = PIECE_SYMBOLISM.get(symbol_key, {})
+    analysis = {"role_title": symbol_data.get("role", ""), "self_desc": symbol_data.get("self", ""), "love_desc": symbol_data.get("love", ""), "career_desc": symbol_data.get("career", ""), "health_desc": symbol_data.get("health", ""), "special_warnings": []}
+    
+    if name in ['馬', '傌']: analysis["special_warnings"].append("⚠️ **受困格局：** 馬在中間施展不開。")
+    if name in ['兵', '卒']: analysis["special_warnings"].append("💰 **強迫儲蓄：** 兵卒是辛苦錢，建議定存。")
+    if name in ['包', '炮']: analysis["special_warnings"].append("📏 **保持距離：** 感情或合作適合隔山打牛。")
+    if name in ['車', '俥']: analysis["special_warnings"].append("🔥 **煞車提醒：** 做事多留三分餘地。")
+    return analysis
