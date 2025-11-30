@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import time
-# 修正導入：從同級檔案導入
+import os
 from data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
 from rules import generate_random_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference
 
@@ -15,8 +15,13 @@ def display_piece(gua_data, pos_num):
     image_path = get_image_path(name, color) 
     
     st.markdown(f"<p style='text-align: center; font-size: 14px; margin-bottom: 0;'>{POSITION_MAP[pos_num]['名稱']} ({pos_num})</p>", unsafe_allow_html=True)
-    if image_path:
+    
+    # 檢查圖片是否存在，防止報錯
+    if image_path and os.path.exists(image_path):
         st.image(image_path, caption=f"{color}{name}", width=90) 
+    else:
+        st.warning(f"圖缺: {color}{name}")
+
     st.markdown(f"<p style='text-align: center; font-size: 10px;'>{POSITION_MAP[pos_num]['關係']}</p>", unsafe_allow_html=True)
 
 # ----------------------------------------------
@@ -101,7 +106,8 @@ with st.sidebar:
             st.session_state.final_result_status = "VALID"
 
         st.success(st.session_state.message)
-        st.experimental_rerun()
+        # 【修正點】使用 st.rerun() 取代 st.experimental_rerun()
+        st.rerun()
 
 
 # ----------------------------------------------
@@ -121,6 +127,7 @@ analysis_results = calculate_net_gain_from_gua(current_gua)
 health_analysis = analyze_health_and_luck(current_gua)
 
 st.header("✅ 當前卦象與核心能量場")
+# 視覺化排布
 col_u1, col_u2, col_u3 = st.columns([1, 1, 1])
 with col_u2: display_piece(current_gua, 4)
 col_m1, col_m2, col_m3 = st.columns([1, 1, 1])
