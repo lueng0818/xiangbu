@@ -123,7 +123,7 @@ if st.session_state.current_mode == "SINGLE" and st.session_state.sub_query == "
     st.stop()
 
 # ==============================================================================
-# 模式 A: 全盤流年顯示 (保持不變)
+# 模式 A: 全盤流年顯示 (修復版)
 # ==============================================================================
 if st.session_state.current_mode == "FULL":
     full_data = st.session_state.full_life_gua
@@ -138,12 +138,25 @@ if st.session_state.current_mode == "FULL":
         coord_report = analyze_coordinate_map(gua, gender)
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
-        c1, c2, c3 = st.columns([1, 1, 1]); 
-        with c2: display_piece(gua, 4)
-        c4, c5, c6 = st.columns([1, 1, 1]); 
-        with c4: display_piece(gua, 2); with c5: display_piece(gua, 1); with c6: display_piece(gua, 3)
-        c7, c8, c9 = st.columns([1, 1, 1]); 
-        with c8: display_piece(gua, 5)
+        
+        # --- 修正後的排版 (正確分行) ---
+        c1, c2, c3 = st.columns([1, 1, 1])
+        with c2: 
+            display_piece(gua, 4)
+            
+        c4, c5, c6 = st.columns([1, 1, 1])
+        with c4: 
+            display_piece(gua, 2)
+        with c5: 
+            display_piece(gua, 1)
+        with c6: 
+            display_piece(gua, 3)
+            
+        c7, c8, c9 = st.columns([1, 1, 1])
+        with c8: 
+            display_piece(gua, 5)
+        # -------------------------------
+
         st.markdown("---")
         col_res1, col_res2 = st.columns(2)
         net_gain = analysis['net_gain']
@@ -160,7 +173,7 @@ if st.session_state.current_mode == "FULL":
     st.warning("⚠️ **71~80歲及晚年：** 需參照餘棋或重新起卦進行專項健康分析。")
 
 # ==============================================================================
-# 模式 B: 單卦問事 (整合 SOP)
+# 模式 B: 單卦問事 (修復版)
 # ==============================================================================
 elif st.session_state.current_mode == "SINGLE":
     current_gua = st.session_state.current_gua
@@ -174,14 +187,24 @@ elif st.session_state.current_mode == "SINGLE":
     body_diagnosis = analyze_body_hologram(current_gua)
 
     st.header(f"✅ 單卦解析：{sub_query}")
+    
+    # --- 修正後的排版 (正確分行) ---
     col_u1, col_u2, col_u3 = st.columns([1, 1, 1])
-    with col_u2: display_piece(current_gua, 4)
+    with col_u2: 
+        display_piece(current_gua, 4)
+        
     col_m1, col_m2, col_m3 = st.columns([1, 1, 1])
-    with col_m1: display_piece(current_gua, 2)
-    with col_m2: display_piece(current_gua, 1)
-    with col_m3: display_piece(current_gua, 3)
+    with col_m1: 
+        display_piece(current_gua, 2)
+    with col_m2: 
+        display_piece(current_gua, 1)
+    with col_m3: 
+        display_piece(current_gua, 3)
+        
     col_d1, col_d2, col_d3 = st.columns([1, 1, 1])
-    with col_d2: display_piece(current_gua, 5)
+    with col_d2: 
+        display_piece(current_gua, 5)
+    # -------------------------------
 
     st.markdown("---")
     
@@ -190,7 +213,7 @@ elif st.session_state.current_mode == "SINGLE":
     tab1, tab2, tab3, tab4 = st.tabs(tab_names)
     
     # -----------------------
-    # Tab 1: 能量/財運分數 (整合「投資/財運」SOP)
+    # Tab 1: 能量/財運分數 (整合 SOP)
     # -----------------------
     with tab1:
         st.subheader("💰 能量互動法則計算 (Score)")
@@ -216,7 +239,7 @@ elif st.session_state.current_mode == "SINGLE":
         with st.expander("詳細計算"): st.dataframe(pd.DataFrame(analysis_results['interactions']))
 
     # -----------------------
-    # Tab 2: 格局與建議 (整合「事業」、「運勢」SOP)
+    # Tab 2: 格局與建議 (整合 SOP)
     # ------------------------------------
     with tab2:
         exemption = check_exemption(current_gua)
@@ -263,7 +286,7 @@ elif st.session_state.current_mode == "SINGLE":
         for warn in health_analysis['health_warnings']: st.warning(warn)
 
     # -----------------------
-    # Tab 3: 深度解讀 (整合「健康」、「前世」、「離婚」SOP)
+    # Tab 3: 深度解讀 (整合 SOP)
     # ------------------------------------
     with tab3:
         # 1. 健康分析 SOP
@@ -282,7 +305,6 @@ elif st.session_state.current_mode == "SINGLE":
             if check_consumption_at_1_or_5(current_gua): st.error("🚨 出現「消耗格」或「被通吃」，務必建議進行正規健康檢查。")
             
             st.markdown("**3. 五行缺失/過剩：**")
-            body_diagnosis = analyze_body_hologram(current_gua)
             if body_diagnosis:
                 for diag in body_diagnosis: st.write(f"- {diag}")
             st.markdown("</div>", unsafe_allow_html=True)
@@ -325,22 +347,36 @@ elif st.session_state.current_mode == "SINGLE":
             st.subheader("🔍 天地人三才缺失檢測")
             cols = st.columns(3)
             if trinity_detailed['missing_heaven']:
-                with cols[0]: st.error("❌ 缺天 (無上格)"); st.markdown(f"**特質：** {trinity_detailed['missing_heaven']['desc']}"); with st.expander("💡 化解建議"): st.write(trinity_detailed['missing_heaven']['advice'])
+                with cols[0]:
+                    st.error("❌ 缺天 (無上格)")
+                    st.markdown(f"**特質：** {trinity_detailed['missing_heaven']['desc']}")
+                    with st.expander("💡 化解建議"):
+                        st.write(trinity_detailed['missing_heaven']['advice'])
             else: cols[0].success("✅ 天格穩固")
+
             if trinity_detailed['missing_human']:
-                with cols[1]: st.error("❌ 缺人 (無中格)"); st.markdown(f"**特質：** {trinity_detailed['missing_human']['desc']}"); with st.expander("💡 化解建議"): st.write(trinity_detailed['missing_human']['advice'])
+                with cols[1]:
+                    st.error("❌ 缺人 (無中格)")
+                    st.markdown(f"**特質：** {trinity_detailed['missing_human']['desc']}")
+                    with st.expander("💡 化解建議"):
+                        st.write(trinity_detailed['missing_human']['advice'])
             else: cols[1].success("✅ 人格穩固")
+
             if trinity_detailed['missing_earth']:
-                with cols[2]: st.error("❌ 缺地 (無下格)"); st.markdown(f"**特質：** {trinity_detailed['missing_earth']['desc']}"); with st.expander("💡 化解建議"): st.write(trinity_detailed['missing_earth']['advice'])
+                with cols[2]:
+                    st.error("❌ 缺地 (無下格)")
+                    st.markdown(f"**特質：** {trinity_detailed['missing_earth']['desc']}")
+                    with st.expander("💡 化解建議"):
+                        st.write(trinity_detailed['missing_earth']['advice'])
             else: cols[2].success("✅ 地格穩固")
 
     # -----------------------
-    # Tab 4: 座標定位 (整合「感情/關係」SOP)
+    # Tab 4: 座標定位 (整合 SOP)
     # ------------------------------------
     with tab4:
         st.subheader("🗺️ 五支棋座標地圖 (位置決定角色)")
         
-        # 感情/關係 SOP 放在這裡最合適
+        # 感情/關係 SOP
         if sub_query == "感情/關係":
             st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
             st.markdown("#### 💡 感情諮詢 SOP")
@@ -359,12 +395,22 @@ elif st.session_state.current_mode == "SINGLE":
 
         # 顯示座標地圖
         col_v1, col_v2, col_v3 = st.columns(3)
-        with col_v1: st.markdown("**☁️ 上格 (天/長輩)**"); st.write(coord_report["top_support"])
-        with col_v2: st.markdown("**👤 中格 (人/核心)**"); st.write(coord_report["center_status"])
-        with col_v3: st.markdown("**⛰️ 下格 (地/結果)**"); st.write(coord_report["bottom_foundation"])
+        with col_v1: 
+            st.markdown("**☁️ 上格 (天/長輩)**")
+            st.write(coord_report["top_support"])
+        with col_v2: 
+            st.markdown("**👤 中格 (人/核心)**")
+            st.write(coord_report["center_status"])
+        with col_v3: 
+            st.markdown("**⛰️ 下格 (地/結果)**")
+            st.write(coord_report["bottom_foundation"])
         st.markdown("---")
         col_h1, col_h2 = st.columns(2)
         left_role = "妻/女友" if gender == "男" else "姊妹/女同事"
-        with col_h1: st.markdown(f"**👈 左格 (2) - {left_role}**"); st.write(coord_report["love_relationship"] if gender == "男" else coord_report["peer_relationship"])
+        with col_h1: 
+            st.markdown(f"**👈 左格 (2) - {left_role}**")
+            st.write(coord_report["love_relationship"] if gender == "男" else coord_report["peer_relationship"])
         right_role = "兄弟/男同事" if gender == "男" else "夫/男友"
-        with col_h2: st.markdown(f"**👉 右格 (3) - {right_role}**"); st.write(coord_report["peer_relationship"] if gender == "男" else coord_report["love_relationship"])
+        with col_h2: 
+            st.markdown(f"**👉 右格 (3) - {right_role}**")
+            st.write(coord_report["peer_relationship"] if gender == "男" else coord_report["love_relationship"])
