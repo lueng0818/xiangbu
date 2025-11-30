@@ -155,7 +155,6 @@ def analyze_body_hologram(current_gua):
     for pos, name, color, val in current_gua:
         element = ATTRIBUTES.get(name, {}).get('五行', '')
         color_nature = "發炎/急性/燥熱" if color == "紅" else "氣滯/慢性/寒濕"
-        
         if pos == 4:
             if name in ['炮', '包']: diagnosis.append(f"🔴 **頭部 ({color}{name})**：可能**頭痛、失眠**或神經衰弱。({color_nature})")
             elif name in ['車', '俥'] and color == '紅': diagnosis.append(f"🔴 **頭部 ({color}{name})**：紅車衝撞，留意**血壓高**或頭部脹痛。")
@@ -215,10 +214,13 @@ def analyze_holistic_health(current_gua):
     return report
 
 def analyze_health_and_luck(current_gua):
-    analysis = {'red_count': 0, 'black_count': 0, 'health_warnings': [], 'remedy': {}}
+    analysis = {'red_count': 0, 'black_count': 0, 'missing_elements': {'木': True, '火': True, '土': True, '金': True, '水': True}, 'health_warnings': [], 'remedy': {}}
     for pos, name, color, val in current_gua:
         analysis['red_count'] += (color == '紅')
         analysis['black_count'] += (color == '黑')
+        element = ATTRIBUTES.get(name, {}).get('五行', 'N/A')[0]
+        if element != 'N': analysis['missing_elements'][element] = False
+    
     if analysis['red_count'] > analysis['black_count']:
         remedy = ENERGY_REMEDIES["Red"]
         analysis['remedy'] = remedy
@@ -319,10 +321,7 @@ def calculate_net_gain_from_gua(current_gua):
     return {"gain": res["score_A"], "cost": res["score_B"], "net_gain": res["net_score"], "interactions": []}
 
 def calculate_score_by_mode(current_gua, mode="general"):
-    """
-    【新增】多模式量化計分引擎 (Universal Scoring Engine)
-    mode: 'general', 'career', 'karma', 'health', 'investment', 'love', 'divorce'
-    """
+    """多模式量化計分引擎 (Universal Scoring Engine)"""
     center_piece = next(p for p in current_gua if p[0] == 1)
     neighbors = [p for p in current_gua if p[0] != 1]
     
