@@ -1,6 +1,6 @@
 import random
-# 【修正點 3】: 確保從 data 檔案導入
-from data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
+# 【修正點】: 使用相對導入 (前面多一個點 ".")
+from .data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
 
 # ==============================================================================
 # 核心邏輯函數
@@ -236,4 +236,5 @@ def calculate_net_gain_from_gua(current_gua):
         "net_gain": round(total_gain - total_cost, 2), "interactions": interactions
 
     }
+
 
