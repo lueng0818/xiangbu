@@ -1,10 +1,9 @@
 import streamlit as st
 import pandas as pd
 import time
-# 使用相對導入 (從 .data 導入)
-from .data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
-# 使用相對導入 (從 .rules 導入)
-from .rules import generate_random_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference
+# 【修正點 1】: 將相對導入改為簡單的模組名稱導入 (依賴 Python Path)
+from data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
+from rules import generate_random_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference
 
 
 # ----------------------------------------------
@@ -279,6 +278,7 @@ with tab3:
     st.markdown("---")
     st.subheader("通用健康與人際關係基礎分析")
     st.write("請參考上方五行與氣血警示。")
+
 
 
 
