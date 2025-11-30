@@ -73,7 +73,6 @@ def is_same_type(name1, name2):
 
 def check_good_friend(p1, p2):
     """判斷是否為好朋友 (同類不同色)"""
-    # p1, p2 格式: (pos, name, color, value)
     return is_same_type(p1[1], p2[1]) and p1[2] != p2[2]
 
 def check_consumption(p1, p2):
@@ -96,7 +95,6 @@ def analyze_trinity_detailed(current_gua):
     }
     
     # 1. 缺天判斷 (4 vs 1)
-    # 條件：消耗(同類同色) OR 上方吃中間(相剋/壓力)
     is_heaven_consuming = check_consumption(p4, p1)
     is_heaven_eating_human = can_eat(4, 1, current_gua)
     
@@ -110,7 +108,6 @@ def analyze_trinity_detailed(current_gua):
         }
 
     # 2. 缺地判斷 (5 vs 1)
-    # 條件：消耗 OR 下方吃中間(根基被毀)
     is_earth_consuming = check_consumption(p5, p1)
     is_earth_eating_human = can_eat(5, 1, current_gua)
     
@@ -124,7 +121,6 @@ def analyze_trinity_detailed(current_gua):
         }
 
     # 3. 缺人判斷 (1 vs 四周)
-    # 條件：孤立無援 (四周沒有好朋友)
     neighbors = [2, 3, 4, 5]
     has_friend = False
     for pos in neighbors:
@@ -264,10 +260,9 @@ def calculate_net_gain_from_gua(current_gua):
                     gain_value = val_b * 1.0
                     is_full_eat = True
                 elif VALUE_MAP[name_a] > VALUE_MAP[name_b]: 
-                    is_full_eat = True # 位階高吃位階低視為全吃，以便符合續攻
+                    is_full_eat = True
                     gain_value = val_b * 1.0
                 
-                # 象相吃半車俥規則
                 if name_a in ['象', '相'] and name_b in ['車', '俥']:
                     gain_value = val_b * 0.5
                     is_full_eat = False
