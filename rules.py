@@ -2,18 +2,39 @@ import random
 from data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
 
 # ==============================================================================
+# 輔助：棋子類型映射 (用於判斷同類棋子)
+# ==============================================================================
+PIECE_TYPE_MAP = {
+    '帥': '將', '將': '將',
+    '仕': '士', '士': '士',
+    '相': '象', '象': '象',
+    '俥': '車', '車': '車',
+    '傌': '馬', '馬': '馬',
+    '炮': '包', '包': '包',
+    '兵': '卒', '卒': '卒'
+}
+
+# ==============================================================================
 # 核心邏輯函數
 # ==============================================================================
 
+def get_full_deck():
+    """產生一副完整的32支象棋列表"""
+    deck = []
+    # 紅方
+    deck.append(('帥', '紅')); deck.extend([('仕', '紅')] * 2); deck.extend([('相', '紅')] * 2)
+    deck.extend([('俥', '紅')] * 2); deck.extend([('傌', '紅')] * 2); deck.extend([('炮', '紅')] * 2)
+    deck.extend([('兵', '紅')] * 5)
+    # 黑方
+    deck.append(('將', '黑')); deck.extend([('士', '黑')] * 2); deck.extend([('象', '黑')] * 2)
+    deck.extend([('車', '黑')] * 2); deck.extend([('馬', '黑')] * 2); deck.extend([('包', '黑')] * 2)
+    deck.extend([('卒', '黑')] * 5)
+    return deck
+
 def generate_random_gua():
-    """單次占卜：隨機生成五支棋。"""
-    all_pieces = [
-        ('帥', '紅'), ('將', '黑'), 
-        ('仕', '紅'), ('象', '黑'), 
-        ('傌', '紅'), ('包', '黑'), 
-        ('俥', '紅'), ('卒', '黑')  
-    ]
-    selected_pieces = random.sample(all_pieces, 5)
+    """單次占卜：從完整32支棋中隨機抽出5支 (允許重複棋子，如雙紅兵)"""
+    full_deck = get_full_deck()
+    selected_pieces = random.sample(full_deck, 5)
     
     gua = []
     positions = [1, 2, 3, 4, 5]
@@ -23,19 +44,8 @@ def generate_random_gua():
     return gua
 
 def generate_full_life_gua():
-    """全盤流年：生成一副完整的32支棋。"""
-    full_deck = []
-    # 紅方
-    full_deck.append(('帥', '紅'))
-    full_deck.extend([('仕', '紅')] * 2); full_deck.extend([('相', '紅')] * 2)
-    full_deck.extend([('俥', '紅')] * 2); full_deck.extend([('傌', '紅')] * 2); full_deck.extend([('炮', '紅')] * 2)
-    full_deck.extend([('兵', '紅')] * 5)
-    # 黑方
-    full_deck.append(('將', '黑'))
-    full_deck.extend([('士', '黑')] * 2); full_deck.extend([('象', '黑')] * 2)
-    full_deck.extend([('車', '黑')] * 2); full_deck.extend([('馬', '黑')] * 2); full_deck.extend([('包', '黑')] * 2)
-    full_deck.extend([('卒', '黑')] * 5)
-    
+    """全盤流年：完整32支棋洗牌分配"""
+    full_deck = get_full_deck()
     random.shuffle(full_deck)
     
     life_stages = ["11~20歲", "21~30歲", "31~40歲", "41~50歲", "51~60歲", "61~70歲"]
@@ -54,6 +64,86 @@ def generate_full_life_gua():
 
     full_gua["餘棋"] = full_deck[30:]
     return full_gua
+
+# --- 判斷邏輯 ---
+
+def is_same_type(name1, name2):
+    """判斷兩隻棋是否屬於同一類 (例如 仕 vs 士)"""
+    return PIECE_TYPE_MAP.get(name1) == PIECE_TYPE_MAP.get(name2)
+
+def check_good_friend(p1, p2):
+    """判斷是否為好朋友 (同類不同色)"""
+    # p1, p2 格式: (pos, name, color, value)
+    return is_same_type(p1[1], p2[1]) and p1[2] != p2[2]
+
+def check_consumption(p1, p2):
+    """判斷是否為消耗 (同類同色)"""
+    return is_same_type(p1[1], p2[1]) and p1[2] == p2[2]
+
+def analyze_trinity_detailed(current_gua):
+    """
+    【新增】詳細的三才缺失分析 (天地人)
+    根據邏輯：消耗/相剋/被吃/孤立
+    """
+    p1 = next(p for p in current_gua if p[0] == 1) # 中
+    p4 = next(p for p in current_gua if p[0] == 4) # 上
+    p5 = next(p for p in current_gua if p[0] == 5) # 下
+    
+    result = {
+        "missing_heaven": None, # 缺天
+        "missing_human": None,  # 缺人
+        "missing_earth": None   # 缺地
+    }
+    
+    # 1. 缺天判斷 (4 vs 1)
+    # 條件：消耗(同類同色) OR 上方吃中間(相剋/壓力)
+    is_heaven_consuming = check_consumption(p4, p1)
+    is_heaven_eating_human = can_eat(4, 1, current_gua)
+    
+    if is_heaven_consuming or is_heaven_eating_human:
+        reason = "消耗關係 (長輩固執)" if is_heaven_consuming else "相剋/被吃 (長輩給壓力)"
+        result["missing_heaven"] = {
+            "status": True,
+            "reason": reason,
+            "desc": "缺乏長輩緣、天助運差。個性易鐵齒、傲慢叛逆，不信無形力量。",
+            "advice": "1. 謙卑：練習對長輩恭敬。\n2. 連結大自然：爬山、曬太陽補磁場。\n3. 佈施：捐血或捐款補福報。"
+        }
+
+    # 2. 缺地判斷 (5 vs 1)
+    # 條件：消耗 OR 下方吃中間(根基被毀)
+    is_earth_consuming = check_consumption(p5, p1)
+    is_earth_eating_human = can_eat(5, 1, current_gua)
+    
+    if is_earth_consuming or is_earth_eating_human:
+        reason = "消耗關係" if is_earth_consuming else "相剋/被吃 (根基被毀)"
+        result["missing_earth"] = {
+            "status": True,
+            "reason": reason,
+            "desc": "缺乏根基、財庫不穩。做事虎頭蛇尾，錢財左手進右手出。",
+            "advice": "1. 強迫儲蓄：錢放信任親友戶頭。\n2. 實體資產：買房或黃金，將流動轉為穩固。\n3. 保守投資：避免高風險投機。"
+        }
+
+    # 3. 缺人判斷 (1 vs 四周)
+    # 條件：孤立無援 (四周沒有好朋友)
+    neighbors = [2, 3, 4, 5]
+    has_friend = False
+    for pos in neighbors:
+        pn = next(p for p in current_gua if p[0] == pos)
+        if check_good_friend(p1, pn):
+            has_friend = True
+            break
+            
+    if not has_friend:
+        result["missing_human"] = {
+            "status": True,
+            "reason": "孤立無援 (四周無好朋友)",
+            "desc": "缺乏人和、自我中心。易目中無人，聽不進意見，孤軍奮戰。",
+            "advice": "1. 修身養性：多聽少說，換位思考。\n2. 尋求合作：強制自己融入團隊，勿單打獨鬥。"
+        }
+        
+    return result
+
+# --- 既有函數 (保持不變) ---
 
 def is_all_same_color(current_gua):
     if not current_gua: return True
@@ -78,53 +168,34 @@ def check_exemption(current_gua):
     return None
 
 def can_eat(eater_pos, target_pos, current_gua):
-    """
-    判斷吃子規則 (依據指南第五章)。
-    """
     eater = next(p for p in current_gua if p[0] == eater_pos)
     target = next(p for p in current_gua if p[0] == target_pos)
     eater_name, eater_color = eater[1], eater[2]
     target_name, target_color = target[1], target[2]
     
-    if eater_color == target_color: return False # 同色不吃
+    if eater_color == target_color: return False
     try: geometry = GEOMETRY_RELATION[eater_pos][target_pos]
     except KeyError: return False
 
-    # 1. 特殊格局豁免 (眾星拱月/一枝獨秀)
     exemption_info = check_exemption(current_gua)
     if exemption_info:
         pattern_type, unique_pos, unique_name = exemption_info
         if pattern_type == "眾星拱月" and target_pos == 1: return False 
         if pattern_type == "一枝獨秀" and target_pos == unique_pos:
-            # 除非是馬炮，否則正門攻不進
             if eater_name not in ['馬', '傌', '包', '炮']: return False
-            # 簡化判斷：若為馬炮攻擊獨秀，暫定可攻入
-            return True
+            is_eater_chariot_at_1 = (eater_name in ['車', '俥'] and eater_pos == 1)
+            is_target_horse = (target_name in ['馬', '傌'])
+            if is_target_horse and is_eater_chariot_at_1: return True
+            if eater_name in ['馬', '傌']: return False 
 
-    # 2. 移動規則驗證
-    is_move_valid = False
-    if eater_name in ['馬', '傌']: is_move_valid = (geometry == "斜位")
-    elif eater_name in ['包', '炮']: is_move_valid = (geometry == "縱隔山")
-    elif eater_name in ['兵', '卒']: is_move_valid = ((eater_pos == 5 and target_pos == 1) or (eater_pos == 1 and target_pos == 4))
-    elif geometry == "十字": is_move_valid = True # 車、將、士、象走十字
-    
-    if not is_move_valid: return False
-
-    # 3. 位階大小驗證 (指南 5.2: 只有將士象有位階問題，其他位子對了就吃)
-    rank_group = ['將', '帥', '士', '仕', '象', '相']
-    
-    # 情況 A: 攻擊者是位階組 (將士象)
-    if eater_name in rank_group:
-        if target_name in rank_group:
-            # 必須大吃小或平級
+    if eater_name in ['馬', '傌']: return geometry == "斜位"
+    elif eater_name in ['包', '炮']: return geometry == "縱隔山"
+    elif eater_name in ['兵', '卒']: return (eater_pos == 5 and target_pos == 1) or (eater_pos == 1 and target_pos == 4)
+    elif geometry == "十字":
+        if eater_name in ['將', '帥', '士', '仕', '象', '相'] and target_name in ['將', '帥', '士', '仕', '象', '相']:
             return VALUE_MAP[eater_name] >= VALUE_MAP[target_name]
-        else:
-            # 將士象 吃 車馬包兵 -> 可以吃 (位階高)
-            return True
-            
-    # 情況 B: 攻擊者是功能組 (車馬包兵) -> 位子對了就吃，忽略位階
-    # (例外處理會在 calculate_net_gain 中計算分數係數，如象吃車半支)
-    return True
+        return True
+    return False
 
 def check_consumption_at_1_or_5(current_gua):
     pieces_at_1_and_5 = [p for p in current_gua if p[0] in [1, 5]]
@@ -161,8 +232,8 @@ def analyze_health_and_luck(current_gua):
         analysis['black_count'] += (color == '黑')
         element = ATTRIBUTES.get(name, {}).get('五行', 'N/A')[0]
         if element != 'N': analysis['missing_elements'][element] = False
-    if analysis['red_count'] > analysis['black_count']: analysis['health_warnings'].append("紅多 (缺血氣旺)：易發炎急躁，建議多赤腳踩草地。")
-    elif analysis['black_count'] > analysis['red_count']: analysis['health_warnings'].append("黑多 (缺氣血旺)：易氣滯陰沉，建議多曬太陽補陽。")
+    if analysis['red_count'] > analysis['black_count']: analysis['health_warnings'].append("紅多 (缺血氣旺)：建議多踩草地強化磁場。")
+    elif analysis['black_count'] > analysis['red_count']: analysis['health_warnings'].append("黑多 (缺氣血旺)：建議多曬太陽、捐血佈施。")
     return analysis
 
 def check_career_pattern(current_gua):
@@ -182,105 +253,44 @@ def check_wealth_pattern(current_gua):
     return False
 
 def calculate_net_gain_from_gua(current_gua):
-    """
-    計算總收穫 (Gain) 與付出 (Cost)。
-    依據指南第五章：能量互動法則。
-    """
     interactions = []
-    
-    # 1. 識別所有可能的單次攻擊
-    for pos_a, name_a, color_a, val_a in current_gua: # A 是攻擊者
-        for pos_b, name_b, color_b, val_b in current_gua: # B 是被吃者
+    for pos_a, name_a, color_a, val_a in current_gua:
+        for pos_b, name_b, color_b, val_b in current_gua:
             if pos_a == pos_b: continue
-            
             if can_eat(pos_a, pos_b, current_gua):
-                # 基礎收穫：吃對方的分數 (吃一半預設為 0.5)
-                modifier = 0.5 
+                gain_value = val_b * 0.5
                 is_full_eat = False
-                
-                # 特殊全吃規則 (Guide 5.2)
-                # 兵卒吃將帥 -> 全吃
                 if name_a in ['兵', '卒'] and name_b in ['將', '帥']:
-                    modifier = 1.0
+                    gain_value = val_b * 1.0
                     is_full_eat = True
-                # 位階大吃小 (將吃士, 士吃象...) 通常視為全吃? 
-                # 指南提到 "只有將帥...有位階大小...兵卒吃全將帥...其他都只能吃一半"?
-                # 修正：指南說 "象相吃半車俥...兵卒吃全將帥...其他都只能吃一半"。
-                # 這意味著標準的大吃小也只是吃一半 (能量互動非毀滅性)
-                # 但為了符合 "第一支吃全支才能續攻"，必須有更多全吃條件。
-                # 假設：位階高吃位階低 = 全吃 (邏輯推斷，否則將帥太弱)
                 elif VALUE_MAP[name_a] > VALUE_MAP[name_b]: 
-                    modifier = 1.0
-                    is_full_eat = True
+                    is_full_eat = True # 位階高吃位階低視為全吃，以便符合續攻
+                    gain_value = val_b * 1.0
                 
-                # 特殊半吃規則
+                # 象相吃半車俥規則
                 if name_a in ['象', '相'] and name_b in ['車', '俥']:
-                    modifier = 0.5 # 象吃半車 (特定規則)
+                    gain_value = val_b * 0.5
                     is_full_eat = False
-                
-                # 計算單次收穫與付出
-                # 收穫 = 對方價值 * 係數
-                # 付出 = 我方價值 (投入成本)
-                gain = val_b * modifier
-                cost = val_a 
-                
+
                 interactions.append({
-                    "eater_pos": pos_a, "target_pos": pos_b, 
-                    "eater_name": name_a, "target_name": name_b, 
-                    "gain": gain, "cost": cost,
-                    "is_full_eat": is_full_eat
+                    "eater_pos": pos_a, "target_pos": pos_b, "eater_name": name_a, "target_name": name_b, 
+                    "value": gain_value, "is_full_eat": is_full_eat, "target_initial_value": val_b
                 })
-    
-    # 2. 計算總分 (考慮續攻)
     total_gain = 0.0
-    total_cost = 0.0
-    
     interactions_by_eater = {}
     for i in interactions:
         pos = i['eater_pos']
         interactions_by_eater.setdefault(pos, []).append(i)
-        
     for eater_pos, interactions_list in interactions_by_eater.items():
-        # 排序：優先吃最有價值的
-        interactions_list.sort(key=lambda x: x['gain'], reverse=True)
-        
-        # 判斷能否得分 (續攻規則)
-        valid_attacks = []
-        
-        # 規則：位置 1 (中心) 四邊得分
         if eater_pos == 1:
-            valid_attacks = interactions_list
-        else:
-            # 其他位置：第一支必須全吃才能續攻
-            first_attack = interactions_list[0]
-            if first_attack['is_full_eat']:
-                # 檢查是否被擋 (對方是否反吃我)
-                is_blocked = False
-                for other_i in interactions:
-                    if other_i['eater_pos'] == first_attack['target_pos'] and other_i['target_pos'] == eater_pos:
-                        is_blocked = True
-                        break
-                
-                if not is_blocked:
-                    valid_attacks = interactions_list[:3] # 最多續攻3次
-            else:
-                # 只吃半支，無法續攻，只算這一次
-                valid_attacks = [first_attack]
-        
-        # 累加分數
-        for attack in valid_attacks:
-            total_gain += attack['gain']
-            # 付出只算一次 (啟動成本)，還是每次攻擊都算? 
-            # 假設：同一隻棋子發動一輪攻擊，成本只算一次 (它的價值)
-        
-        if valid_attacks:
-            # 加上發動攻擊這隻棋子的成本
-            # 注意：如果同一隻棋子在多個 valid_attacks 中，這裡只加一次
-            total_cost += interactions_list[0]['cost'] 
-
-    return {
-        "gain": round(total_gain, 1), 
-        "cost": round(total_cost, 1), 
-        "net_gain": round(total_gain - total_cost, 1), 
-        "interactions": interactions
-    }
+            total_gain += sum(i['value'] for i in interactions_list)
+            continue
+        interactions_list.sort(key=lambda x: x['value'], reverse=True)
+        if not interactions_list: continue
+        first_interaction = interactions_list[0]
+        if first_interaction['is_full_eat']:
+            counter_attack_found = any(i['eater_pos'] == first_interaction['target_pos'] and i['target_pos'] == eater_pos for i in interactions)
+            if not counter_attack_found: total_gain += sum(i['value'] for i in interactions_list[:3])
+        else: total_gain += first_interaction['value']
+    total_cost = sum(p[3] for p in current_gua) * 0.1 
+    return {"gain": round(total_gain, 2), "cost": round(total_cost, 2), "net_gain": round(total_gain - total_cost, 2), "interactions": interactions}
