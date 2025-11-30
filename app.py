@@ -26,20 +26,13 @@ def display_piece(gua_data, pos_num):
 # ----------------------------------------------
 # 頁面配置
 # ----------------------------------------------
-st.set_page_config(page_title="專業象棋占卜系統", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="專業象棋占卜系統 - 全盤流年版", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 h1 {color: #B22222; font-family: 'serif'; text-shadow: 1px 1px 2px #000000;}
 h2, h3 {color: #C0C0C0; border-left: 5px solid #8B0000; padding-left: 15px; margin-top: 20px;}
 .stage-box {border: 1px solid #444; padding: 10px; margin-bottom: 20px; border-radius: 5px; background-color: #262730;}
-/* 按鈕樣式優化 */
-div.stButton > button {
-    width: 100%;
-    font-weight: bold;
-    border-radius: 8px;
-    height: 3em;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -59,7 +52,11 @@ if 'current_gua' not in st.session_state: st.session_state.current_gua = []
 with st.sidebar:
     st.header("天機奧秘，誠心求卜")
     st.markdown("### ⚠️ 占卜前重要須知")
-    st.warning("**1. 態度為先**：請保持尊重及恭敬。\n**2. 不成卦**：兩次全黑/全紅，暗示不可為。")
+    st.warning("""
+        **1. 態度為先**：請保持尊重及恭敬。
+        **2. 不成卦**：兩次全黑/全紅，暗示不可為。
+        **3. 醫療免責**：本分析僅供養生參考，**不可取代醫療診斷**。如有不適請優先就醫。
+    """)
     
     st.markdown("---")
     st.header("1. 基本資料")
@@ -67,7 +64,7 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # === 雙模式並列顯示 (優化介面) ===
+    # === 雙模式並列顯示 ===
     
     # 區塊 A: 全盤流年
     st.header("2. 選擇占卜模式")
@@ -76,7 +73,6 @@ with st.sidebar:
         st.subheader("🅰️ 全盤流年 (一生大運)")
         st.info("使用完整32支棋，排布11~80歲人生架構。")
         
-        # 全盤按鈕
         if st.button("🚀 排布全盤流年", type="primary"):
             st.session_state.current_mode = "FULL"
             with st.spinner('正在洗牌、切牌、排布全盤流年...'):
@@ -92,7 +88,6 @@ with st.sidebar:
     with st.container():
         st.subheader("🅱️ 單卦問事 (特定問題)")
         
-        # 單卦選項
         current_sub_query_selection = st.selectbox(
             "選擇問題類別", 
             ["問運勢", "事業查詢", "前世格局", "健康分析", "投資/財運", "感情/關係", "離婚議題"]
@@ -101,12 +96,10 @@ with st.sidebar:
         if current_sub_query_selection == "投資/財運":
             st.date_input("預計獲利時間點", value=None)
             
-        # 單卦按鈕
         if st.button("🔮 開始單卦占卜"):
             st.session_state.current_mode = "SINGLE"
             st.session_state.sub_query = current_sub_query_selection
             
-            # 執行抽卦與重抽邏輯
             new_gua = generate_random_gua()
             if is_all_same_color(new_gua):
                 st.session_state.reroll_count += 1
@@ -144,7 +137,6 @@ if st.session_state.final_result_status == "REJECTED":
     st.error(st.session_state.message); 
     st.stop() 
 
-# 離婚議題性別守衛 (如果單卦選了離婚且是男生)
 if st.session_state.current_mode == "SINGLE" and st.session_state.sub_query == "離婚議題" and gender == "男":
     st.error("⚠️ **規則限制：** 根據象棋占卜秘笈，**離婚議題只能解析女性的命盤**。"); 
     st.warning("請將左側的「詢問性別」選項改為**『女』**，或選擇其他相關的感情議題。"); 
@@ -170,7 +162,6 @@ if st.session_state.current_mode == "FULL":
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
         
-        # 視覺化排盤
         c1, c2, c3 = st.columns([1, 1, 1])
         with c2: display_piece(gua, 4)
         c4, c5, c6 = st.columns([1, 1, 1])
@@ -192,14 +183,10 @@ if st.session_state.current_mode == "FULL":
         else: 
             col_res2.info("格局：平穩發展")
             
-        # 加入該階段的三才缺失提示
         trinity = analyze_trinity_detailed(gua)
-        if trinity['missing_heaven']: 
-            st.error(f"❌ 缺天：{trinity['missing_heaven']['reason']}")
-        if trinity['missing_human']: 
-            st.error(f"❌ 缺人：{trinity['missing_human']['reason']}")
-        if trinity['missing_earth']: 
-            st.error(f"❌ 缺地：{trinity['missing_earth']['reason']}")
+        if trinity['missing_heaven']: st.error(f"❌ 缺天：{trinity['missing_heaven']['reason']}")
+        if trinity['missing_human']: st.error(f"❌ 缺人：{trinity['missing_human']['reason']}")
+        if trinity['missing_earth']: st.error(f"❌ 缺地：{trinity['missing_earth']['reason']}")
 
         st.markdown("</div>", unsafe_allow_html=True)
     st.warning("⚠️ **71~80歲及晚年：** 需參照餘棋或重新起卦進行專項健康分析。")
@@ -221,18 +208,13 @@ elif st.session_state.current_mode == "SINGLE":
     st.header(f"✅ 單卦解析：{sub_query}")
     
     col_u1, col_u2, col_u3 = st.columns([1, 1, 1])
-    with col_u2: 
-        display_piece(current_gua, 4)
+    with col_u2: display_piece(current_gua, 4)
     col_m1, col_m2, col_m3 = st.columns([1, 1, 1])
-    with col_m1: 
-        display_piece(current_gua, 2)
-    with col_m2: 
-        display_piece(current_gua, 1)
-    with col_m3: 
-        display_piece(current_gua, 3)
+    with col_m1: display_piece(current_gua, 2)
+    with col_m2: display_piece(current_gua, 1)
+    with col_m3: display_piece(current_gua, 3)
     col_d1, col_d2, col_d3 = st.columns([1, 1, 1])
-    with col_d2: 
-        display_piece(current_gua, 5)
+    with col_d2: display_piece(current_gua, 5)
 
     st.markdown("---")
     
@@ -266,35 +248,58 @@ elif st.session_state.current_mode == "SINGLE":
             
     with tab3:
         if sub_query == "健康分析":
-            st.subheader("🏥 中醫五行身心深度診斷")
-            st.info("本分析結合中醫五行與心理情緒，找出運勢與健康的『病灶』。")
+            # --- 核心更新：醫療免責聲明區塊 ---
+            st.error("""
+            **⚠️ 醫療免責聲明 (Medical Disclaimer)**
+            本系統分析乃基於「五行磁場」與「氣場能量」之解讀，僅供**養生與日常保養**參考。
+            **切勿將此結果視為醫學診斷或取代正規醫療行為。** 若有具體生理不適，請務必尋求專業醫師協助。
+            """)
             
-            core = holistic_report["core"]
-            if core:
-                with st.expander(f"1. 核心狀態 ({core['name']} - 五行屬{core['element']})", expanded=True):
-                    st.markdown(f"**❤️ 當下情緒：** {core['psycho']}")
-                    st.markdown(f"**🩺 身體隱疾：** {core['physio']}")
-                    st.success(f"**🍀 調理建議：** {core['advice']}")
-            
-            st.markdown("**2. 盤面能量平衡 (五行偏頗)**")
-            if holistic_report["balance"]["excess"]:
-                for msg in holistic_report["balance"]["excess"]: st.warning(msg)
-            if holistic_report["balance"]["lack"]:
-                for msg in holistic_report["balance"]["lack"]: st.error(msg)
-            if not holistic_report["balance"]["excess"] and not holistic_report["balance"]["lack"]:
-                st.success("五行能量分布平均，身心相對平衡。")
+            # --- 核心更新：諮詢師 SOP ---
+            with st.expander("📖 諮詢師專用：話術轉換與邊界守則 (SOP)"):
+                st.markdown("""
+                **7.1 核心原則：** 我們處理的是「能量 (Software)」，醫生處理的是「肉體 (Hardware)」。
                 
-            st.markdown("**3. 壓力源與致病原因 (剋應與消耗)**")
-            if holistic_report["interaction"]:
-                for msg in holistic_report["interaction"]: st.error(f"⚠️ {msg}")
-            else:
-                st.success("核心位置未受到明顯的剋制或消耗，自我修復能力良好。")
+                **7.2 話術轉換對照表：**
+                | ❌ 避免使用 (醫療診斷) | ✅ 建議使用 (能量諮詢) |
+                | :--- | :--- |
+                | 「你有肝病 / 肝炎。」 | 「卦象顯示木行能量混亂，或肝氣較鬱結。」 |
+                | 「你這個是高血壓。」 | 「此處火能量過旺，氣血循環較急躁。」 |
+                | 「你要吃藥 / 治療。」 | 「建議多休息、調整作息，或尋求醫生檢查。」 |
+                | 「去踩草地就會痊癒。」 | 「踩草地可釋放多餘火氣，幫助平衡磁場。」 |
+                """)
+            
             st.markdown("---")
-            st.subheader("🩸 氣血循環建議")
-            for warn in health_analysis['health_warnings']: st.warning(warn)
+            # --- 原有的身心診斷 ---
+            st.subheader("🏥 中醫五行身心深度診斷")
+            
+            remedy = health_analysis.get('remedy', {})
+            st.markdown(f"#### 1. 整體氣血與調理建議")
+            if "Red" in str(remedy) or "血氣旺" in str(remedy.get('status','')):
+                st.warning(f"**{remedy['status']}**"); st.write(f"👉 **建議行動：{remedy['method']}**"); st.caption(f"原理：{remedy['principle']}")
+            elif "Black" in str(remedy) or "氣血旺" in str(remedy.get('status','')):
+                st.info(f"**{remedy['status']}**"); st.write(f"👉 **建議行動：{remedy['method']}**"); st.caption(f"原理：{remedy['principle']}")
+            else:
+                st.success(f"**{remedy['status']}**：{remedy['advice']}")
+
+            st.markdown(f"#### 2. 身體部位全息掃描 (鏡像原理)")
+            if body_diagnosis:
+                st.write("根據卦象，請留意以下部位的不適訊號：")
+                for diag in body_diagnosis: st.write(f"- {diag}")
+            else: st.success("目前盤面上無顯著的病灶訊號，身體狀況相對平穩。")
+            
+            with st.expander("查看深度心理與五行分析"):
+                core = holistic_report["core"]
+                if core:
+                    st.markdown(f"**核心 ({core['name']})：**"); st.write(f"❤️ 心：{core['psycho']}"); st.write(f"🩺 身：{core['physio']}")
+                if holistic_report["balance"]["excess"]:
+                    st.write("**能量過剩：**"); 
+                    for msg in holistic_report["balance"]["excess"]: st.warning(msg)
+                if holistic_report["interaction"]:
+                    st.write("**致病壓力源：**"); 
+                    for msg in holistic_report["interaction"]: st.error(msg)
 
         else:
-            # 默認顯示天地人三才分析
             st.subheader("🔍 天地人三才缺失檢測")
             cols = st.columns(3)
             
@@ -304,7 +309,7 @@ elif st.session_state.current_mode == "SINGLE":
                     st.markdown(f"**特質：** {trinity_detailed['missing_heaven']['desc']}")
                     with st.expander("💡 化解建議"):
                         st.write(trinity_detailed['missing_heaven']['advice'])
-            else: cols[0].success("✅ 天格穩固 (長輩/天助)")
+            else: cols[0].success("✅ 天格穩固")
 
             if trinity_detailed['missing_human']:
                 with cols[1]:
@@ -312,7 +317,7 @@ elif st.session_state.current_mode == "SINGLE":
                     st.markdown(f"**特質：** {trinity_detailed['missing_human']['desc']}")
                     with st.expander("💡 化解建議"):
                         st.write(trinity_detailed['missing_human']['advice'])
-            else: cols[1].success("✅ 人格穩固 (人和/團隊)")
+            else: cols[1].success("✅ 人格穩固")
 
             if trinity_detailed['missing_earth']:
                 with cols[2]:
@@ -320,7 +325,7 @@ elif st.session_state.current_mode == "SINGLE":
                     st.markdown(f"**特質：** {trinity_detailed['missing_earth']['desc']}")
                     with st.expander("💡 化解建議"):
                         st.write(trinity_detailed['missing_earth']['advice'])
-            else: cols[2].success("✅ 地格穩固 (財庫/根基)")
+            else: cols[2].success("✅ 地格穩固")
 
             if sub_query == "前世格局":
                  piece_1 = next(p for p in current_gua if p[0] == 1)
