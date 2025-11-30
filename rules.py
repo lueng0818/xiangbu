@@ -1,15 +1,29 @@
 import random
-from .data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
+# 修正導入：從同級檔案 data.py 導入
+from data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
 
 # ==============================================================================
 # 核心邏輯函數
 # ==============================================================================
 
 def generate_random_gua():
-    """隨機生成五支棋，確保至少一個紅方和一個黑方，並賦予 1-5 位置。"""
-    # 這裡使用簡化邏輯確保紅黑都有，避免初學者處理全盤 32 支棋的複雜性。
-    all_pieces = [('帥', '紅'), ('將', '黑'), ('士', '紅'), ('象', '黑'), ('馬', '紅'), ('包', '黑'), ('車', '紅'), ('卒', '黑')]
-    selected_pieces = random.sample(all_pieces, 5)
+    """
+    隨機生成五支棋。
+    模擬真實抽棋：建立一副完整的 32 支象棋，洗牌後抽出 5 支。
+    """
+    # 建立一副完整的象棋 (32支)
+    full_deck = []
+    # 紅方
+    full_deck.extend([('帥', '紅'), ('仕', '紅'), ('仕', '紅'), ('相', '紅'), ('相', '紅'), 
+                      ('俥', '紅'), ('俥', '紅'), ('傌', '紅'), ('傌', '紅'), ('炮', '紅'), ('炮', '紅')])
+    full_deck.extend([('兵', '紅')] * 5)
+    # 黑方
+    full_deck.extend([('將', '黑'), ('士', '黑'), ('士', '黑'), ('象', '黑'), ('象', '黑'), 
+                      ('車', '黑'), ('車', '黑'), ('馬', '黑'), ('馬', '黑'), ('包', '黑'), ('包', '黑')])
+    full_deck.extend([('卒', '黑')] * 5)
+    
+    # 隨機抽出 5 支
+    selected_pieces = random.sample(full_deck, 5)
     
     gua = []
     positions = [1, 2, 3, 4, 5]
@@ -78,13 +92,16 @@ def can_eat(eater_pos, target_pos, current_gua):
     exemption_info = check_exemption(current_gua)
     if exemption_info:
         pattern_type, unique_pos, unique_name = exemption_info
-        if pattern_type == "眾星拱月" and target_pos == 1: return False
+        if pattern_type == "眾星拱月" and target_pos == 1: return False # 中心不能被吃
         if pattern_type == "一枝獨秀" and target_pos == unique_pos:
-            if eater_name not in ['馬', '傌', '包', '炮']: return False
+            if eater_name not in ['馬', '傌', '包', '炮']: return False # 正門攻擊失敗
+            
             is_eater_chariot_at_1 = (eater_name in ['車', '俥'] and eater_pos == 1)
             is_target_horse = (target_name in ['馬', '傌'])
+            # 特例：我方1唯車俥可吃馬傌
             if is_target_horse and is_eater_chariot_at_1: return True
-            if eater_name in ['馬', '傌']: return False
+            # 特例：攻擊者也是馬傌，通常很難攻入獨秀，這裡保守返回 False
+            if eater_name in ['馬', '傌']: return False 
 
     # 2. 正常移動規則判斷
     if eater_name in ['馬', '傌']: return geometry == "斜位"
@@ -95,8 +112,8 @@ def can_eat(eater_pos, target_pos, current_gua):
     # 3. 其他皆吃十字 (將帥、士仕、象相、車俥)
     elif geometry == "十字":
         if eater_name in ['將', '帥', '士', '仕', '象', '相'] and target_name in ['將', '帥', '士', '仕', '象', '相']:
-            return VALUE_MAP[eater_name] >= VALUE_MAP[target_name]
-        return True
+            return VALUE_MAP[eater_name] >= VALUE_MAP[target_name] # 位階大小
+        return True # 其他棋子 (車) 只要十字對了就可以吃
             
     return False
 
@@ -115,7 +132,6 @@ def check_consumption_at_1_or_5(current_gua):
     for (name, color), count in name_color_counts.items():
         if count >= 2:
             return True
-            
     return False
 
 def check_interference(current_gua):
@@ -146,7 +162,6 @@ def check_interference(current_gua):
                     "target": f"{target_piece[2]}{target_piece[1]} (位{pos_b})",
                     "type": inter_type
                 })
-                
     return interference_events
 
 def analyze_health_and_luck(current_gua):
@@ -190,7 +205,7 @@ def calculate_net_gain_from_gua(current_gua):
     """計算總收穫 (Gain) 和總付出 (Cost)，包含續攻邏輯。"""
     interactions = []
     
-    # 1. 識別所有可能的攻擊互動 (省略)
+    # 1. 識別所有可能的攻擊互動
     for pos_a, name_a, color_a, val_a in current_gua:
         for pos_b, name_b, color_b, val_b in current_gua:
             if pos_a == pos_b: continue
@@ -205,7 +220,7 @@ def calculate_net_gain_from_gua(current_gua):
                     "value": gain_value, "is_full_eat": is_full_eat, "target_initial_value": val_b
                 })
     
-    # 2. 執行續攻與總得分計算 (省略)
+    # 2. 執行續攻與總得分計算
     total_gain = 0.0
     interactions_by_eater = {}
     for i in interactions:
@@ -224,8 +239,10 @@ def calculate_net_gain_from_gua(current_gua):
         if first_interaction['is_full_eat']:
             counter_attack_found = any(i['eater_pos'] == first_interaction['target_pos'] and i['target_pos'] == eater_pos for i in interactions)
             if not counter_attack_found:
+                # 若未被擋，前三高分累計
                 total_gain += sum(i['value'] for i in interactions_list[:3])
         else:
+            # 半吃只能算一次
             total_gain += first_interaction['value']
             
     total_cost = sum(p[3] for p in current_gua) * 0.1 
