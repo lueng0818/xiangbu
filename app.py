@@ -2,26 +2,73 @@ import streamlit as st
 import pandas as pd
 import time
 import os
+import base64
 from data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
-# 導入新增的 analyze_trinity_detailed
 from rules import generate_random_gua, generate_full_life_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference, analyze_trinity_detailed, analyze_holistic_health
 
 # ----------------------------------------------
-# 輔助函數
+# 輔助函數：圖片轉 Base64 (解決 HTML 嵌入問題)
 # ----------------------------------------------
-def display_piece(gua_data, pos_num):
-    try:
-        piece = next(p for p in gua_data if p[0] == pos_num)
-        name, color = piece[1], piece[2]
-        image_path = get_image_path(name, color) 
-        st.markdown(f"<div style='text-align: center; font-size: 14px; margin-bottom: 2px;'>{POSITION_MAP[pos_num]['名稱']}</div>", unsafe_allow_html=True)
-        if image_path and os.path.exists(image_path):
-            st.image(image_path, caption=f"{color}{name}", width=70)
-        else:
-            st.warning(f"{color}{name}")
-        st.markdown(f"<div style='text-align: center; font-size: 10px; color: #888;'>{POSITION_MAP[pos_num]['關係']}</div>", unsafe_allow_html=True)
-    except StopIteration:
-        st.empty()
+def get_base64_image(image_path):
+    if not image_path or not os.path.exists(image_path):
+        return None
+    with open(image_path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+# ----------------------------------------------
+# 核心顯示函數：HTML/CSS 強制排版 (手機版優化)
+# ----------------------------------------------
+def render_gua_board(current_gua):
+    """
+    使用 HTML Flexbox 渲染五支棋盤面。
+    優點：在手機上會自動縮小圖片但保持十字結構，不會垂直堆疊。
+    """
+    def get_piece_html(pos):
+        try:
+            piece = next(p for p in current_gua if p[0] == pos)
+            name, color = piece[1], piece[2]
+            img_path = get_image_path(name, color)
+            b64_str = get_base64_image(img_path)
+            
+            # 圖片樣式：手機上最大 55px，電腦上最大 70px
+            if b64_str:
+                img_html = f'<img src="data:image/png;base64,{b64_str}" style="width: 100%; max-width: 65px; height: auto; border-radius: 50%; box-shadow: 2px 2px 5px rgba(0,0,0,0.3);">'
+            else:
+                img_html = f'<div style="width: 50px; height: 50px; background: #444; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">{name}</div>'
+            
+            return f"""
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1;">
+                <div style="font-size: 12px; color: #ccc; margin-bottom: 2px;">{POSITION_MAP[pos]['名稱']}</div>
+                {img_html}
+                <div style="font-size: 10px; color: #888; margin-top: 2px;">{POSITION_MAP[pos]['關係']}</div>
+            </div>
+            """
+        except StopIteration:
+            # 佔位符
+            return '<div style="flex: 1;"></div>'
+
+    # HTML 結構：十字佈局
+    board_html = f"""
+    <div style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 350px; margin: 0 auto; padding: 10px; background-color: rgba(255,255,255,0.05); border-radius: 10px;">
+        
+        <div style="display: flex; justify-content: center; width: 100%; margin-bottom: 10px;">
+            <div style="width: 33%; display: flex; justify-content: center;">{get_piece_html(4)}</div>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px;">
+            {get_piece_html(2)}
+            {get_piece_html(1)}
+            {get_piece_html(3)}
+        </div>
+        
+        <div style="display: flex; justify-content: center; width: 100%;">
+            <div style="width: 33%; display: flex; justify-content: center;">{get_piece_html(5)}</div>
+        </div>
+        
+    </div>
+    """
+    st.markdown(board_html, unsafe_allow_html=True)
 
 # ----------------------------------------------
 # 頁面配置
@@ -122,23 +169,8 @@ if st.session_state.current_mode == "FULL":
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
         
-        # --- 修正後的排版代碼 (正確分行) ---
-        c1, c2, c3 = st.columns([1, 1, 1])
-        with c2: 
-            display_piece(gua, 4)
-            
-        c4, c5, c6 = st.columns([1, 1, 1])
-        with c4: 
-            display_piece(gua, 2)
-        with c5: 
-            display_piece(gua, 1)
-        with c6: 
-            display_piece(gua, 3)
-            
-        c7, c8, c9 = st.columns([1, 1, 1])
-        with c8: 
-            display_piece(gua, 5)
-        # -----------------------------------
+        # 【優化】使用新的 HTML 渲染函數，手機不跑版
+        render_gua_board(gua)
         
         st.markdown("---")
         col_res1, col_res2 = st.columns(2)
@@ -175,23 +207,8 @@ elif st.session_state.current_mode == "SINGLE":
 
     st.header(f"✅ 單卦解析：{sub_query}")
     
-    # --- 修正後的排版代碼 (正確分行) ---
-    col_u1, col_u2, col_u3 = st.columns([1, 1, 1])
-    with col_u2: 
-        display_piece(current_gua, 4)
-        
-    col_m1, col_m2, col_m3 = st.columns([1, 1, 1])
-    with col_m1: 
-        display_piece(current_gua, 2)
-    with col_m2: 
-        display_piece(current_gua, 1)
-    with col_m3: 
-        display_piece(current_gua, 3)
-        
-    col_d1, col_d2, col_d3 = st.columns([1, 1, 1])
-    with col_d2: 
-        display_piece(current_gua, 5)
-    # -----------------------------------
+    # 【優化】使用新的 HTML 渲染函數，手機不跑版
+    render_gua_board(current_gua)
 
     st.markdown("---")
     
@@ -208,7 +225,7 @@ elif st.session_state.current_mode == "SINGLE":
         if sub_query == "投資/財運":
             if net > 0: st.success(f"🎉 **獲利判斷：** 淨利 {net} 分，投資可行，獲利機會高！")
             elif net < 0: st.error(f"📉 **風險判斷：** 虧損 {abs(net)} 分，建議觀望或保守。")
-            else: st.info("⚖️ **平衡判斷：** 收支平衡，無明顯獲利。")
+            else: st.info("⚖️ **平衡判斷：** 收支平衡。")
         else:
             st.info(f"能量淨值：{net} 分。正分代表運勢上揚，負分代表內耗或阻礙。")
         with st.expander("詳細計算"): st.dataframe(pd.DataFrame(analysis_results['interactions']))
@@ -224,12 +241,50 @@ elif st.session_state.current_mode == "SINGLE":
         for warn in health_analysis['health_warnings']: st.warning(warn)
             
     with tab3:
-        # 如果是健康分析，顯示詳細的身心診斷報告
+        # 1. 顯示三才缺失分析
+        st.subheader("🔍 天地人三才缺失檢測")
+        cols = st.columns(3)
+        
+        # 缺天
+        if trinity_detailed['missing_heaven']:
+            with cols[0]:
+                st.error("❌ 缺天 (無上格)")
+                st.markdown(f"**原因：** {trinity_detailed['missing_heaven']['reason']}")
+                st.markdown(f"**特質：** {trinity_detailed['missing_heaven']['desc']}")
+                with st.expander("💡 化解建議"):
+                    st.write(trinity_detailed['missing_heaven']['advice'])
+        else:
+            cols[0].success("✅ 天格穩固 (長輩/天助)")
+
+        # 缺人
+        if trinity_detailed['missing_human']:
+            with cols[1]:
+                st.error("❌ 缺人 (無中格)")
+                st.markdown(f"**原因：** {trinity_detailed['missing_human']['reason']}")
+                st.markdown(f"**特質：** {trinity_detailed['missing_human']['desc']}")
+                with st.expander("💡 化解建議"):
+                    st.write(trinity_detailed['missing_human']['advice'])
+        else:
+            cols[1].success("✅ 人格穩固 (人和/團隊)")
+
+        # 缺地
+        if trinity_detailed['missing_earth']:
+            with cols[2]:
+                st.error("❌ 缺地 (無下格)")
+                st.markdown(f"**原因：** {trinity_detailed['missing_earth']['reason']}")
+                st.markdown(f"**特質：** {trinity_detailed['missing_earth']['desc']}")
+                with st.expander("💡 化解建議"):
+                    st.write(trinity_detailed['missing_earth']['advice'])
+        else:
+            cols[2].success("✅ 地格穩固 (財庫/根基)")
+
+        st.markdown("---")
+
+        # 2. 其他特定主題分析
         if sub_query == "健康分析":
             st.subheader("🏥 中醫五行身心深度診斷")
             st.info("本分析結合中醫五行與心理情緒，找出運勢與健康的『病灶』。")
             
-            # 1. 核心體質 (Layer 1)
             core = holistic_report["core"]
             if core:
                 with st.expander(f"1. 核心狀態 ({core['name']} - 五行屬{core['element']})", expanded=True):
@@ -237,7 +292,6 @@ elif st.session_state.current_mode == "SINGLE":
                     st.markdown(f"**🩺 身體隱疾：** {core['physio']}")
                     st.success(f"**🍀 調理建議：** {core['advice']}")
             
-            # 2. 能量平衡 (Layer 2)
             st.markdown("**2. 盤面能量平衡 (五行偏頗)**")
             if holistic_report["balance"]["excess"]:
                 for msg in holistic_report["balance"]["excess"]: st.warning(msg)
@@ -246,49 +300,17 @@ elif st.session_state.current_mode == "SINGLE":
             if not holistic_report["balance"]["excess"] and not holistic_report["balance"]["lack"]:
                 st.success("五行能量分布平均，身心相對平衡。")
                 
-            # 3. 致病原因 (Layer 3)
             st.markdown("**3. 壓力源與致病原因 (剋應與消耗)**")
             if holistic_report["interaction"]:
                 for msg in holistic_report["interaction"]: st.error(f"⚠️ {msg}")
             else:
                 st.success("核心位置未受到明顯的剋制或消耗，自我修復能力良好。")
-                
             st.markdown("---")
             st.subheader("🩸 氣血循環建議")
             for warn in health_analysis['health_warnings']: st.warning(warn)
 
-        else:
-            # 默認顯示天地人三才分析
-            st.subheader("🔍 天地人三才缺失檢測")
-            cols = st.columns(3)
-            
-            if trinity_detailed['missing_heaven']:
-                with cols[0]:
-                    st.error("❌ 缺天 (無上格)")
-                    st.markdown(f"**原因：** {trinity_detailed['missing_heaven']['reason']}")
-                    st.markdown(f"**特質：** {trinity_detailed['missing_heaven']['desc']}")
-                    with st.expander("💡 化解建議"): st.write(trinity_detailed['missing_heaven']['advice'])
-            else: cols[0].success("✅ 天格穩固 (長輩/天助)")
-
-            if trinity_detailed['missing_human']:
-                with cols[1]:
-                    st.error("❌ 缺人 (無中格)")
-                    st.markdown(f"**原因：** {trinity_detailed['missing_human']['reason']}")
-                    st.markdown(f"**特質：** {trinity_detailed['missing_human']['desc']}")
-                    with st.expander("💡 化解建議"): st.write(trinity_detailed['missing_human']['advice'])
-            else: cols[1].success("✅ 人格穩固 (人和/團隊)")
-
-            if trinity_detailed['missing_earth']:
-                with cols[2]:
-                    st.error("❌ 缺地 (無下格)")
-                    st.markdown(f"**原因：** {trinity_detailed['missing_earth']['reason']}")
-                    st.markdown(f"**特質：** {trinity_detailed['missing_earth']['desc']}")
-                    with st.expander("💡 化解建議"): st.write(trinity_detailed['missing_earth']['advice'])
-            else: cols[2].success("✅ 地格穩固 (財庫/根基)")
-
-            # 其他特定判斷
-            if sub_query == "前世格局":
-                 piece_1 = next(p for p in current_gua if p[0] == 1)
-                 st.write(f"前世身分參考：{piece_1[1]}")
-            elif sub_query == "離婚議題" and gender == "女":
-                 st.warning("請留意好朋友格在2-3或4-5的影響。")
+        elif sub_query == "前世格局":
+             piece_1 = next(p for p in current_gua if p[0] == 1)
+             st.write(f"前世身分參考：{piece_1[1]}")
+        elif sub_query == "離婚議題" and gender == "女":
+             st.warning("請留意好朋友格在2-3或4-5的影響。")
