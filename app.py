@@ -3,7 +3,8 @@ import pandas as pd
 import time
 import os
 from data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
-from rules import generate_random_gua, generate_full_life_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference
+# 導入新增的 analyze_trinity_detailed
+from rules import generate_random_gua, generate_full_life_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference, analyze_trinity_detailed
 
 # ----------------------------------------------
 # 輔助函數
@@ -75,25 +76,15 @@ with st.sidebar:
             if is_all_same_color(new_gua):
                 st.session_state.reroll_count += 1
                 if st.session_state.reroll_count == 1:
-                    with st.spinner('不成卦，重抽中...'): 
-                        time.sleep(1)
-                        new_gua = generate_random_gua()
+                    with st.spinner('不成卦，重抽中...'): time.sleep(1); new_gua = generate_random_gua()
                     if is_all_same_color(new_gua):
-                        st.session_state.current_gua = new_gua
-                        st.session_state.message = "❌ 兩次不成卦，暗示不可為。"
-                        st.session_state.final_result_status = "REJECTED"
+                        st.session_state.current_gua = new_gua; st.session_state.message = "❌ 兩次不成卦，暗示不可為。"; st.session_state.final_result_status = "REJECTED"
                     else:
-                        st.session_state.current_gua = new_gua
-                        st.session_state.message = "🚨 重抽成功。"
-                        st.session_state.final_result_status = "VALID"
+                        st.session_state.current_gua = new_gua; st.session_state.message = "🚨 重抽成功。"; st.session_state.final_result_status = "VALID"
                 else:
-                     st.session_state.message = "請刷新重試。"
-                     st.session_state.final_result_status = "REJECTED" 
+                     st.session_state.message = "請刷新重試。"; st.session_state.final_result_status = "REJECTED" 
             else:
-                st.session_state.current_gua = new_gua
-                st.session_state.reroll_count = 0
-                st.session_state.message = "卦象生成成功。"
-                st.session_state.final_result_status = "VALID"
+                st.session_state.current_gua = new_gua; st.session_state.reroll_count = 0; st.session_state.message = "卦象生成成功。"; st.session_state.final_result_status = "VALID"
         st.success(st.session_state.message)
         st.rerun()
 
@@ -120,23 +111,12 @@ if st.session_state.current_mode == "FULL":
         analysis = calculate_net_gain_from_gua(gua)
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
-        
-        # 修正：將 with 語句分行寫，避免 SyntaxError
-        c1, c2, c3 = st.columns([1, 1, 1]) 
-        with c2: 
-            display_piece(gua, 4)
-            
-        c4, c5, c6 = st.columns([1, 1, 1]) 
-        with c4: 
-            display_piece(gua, 2)
-        with c5: 
-            display_piece(gua, 1)
-        with c6: 
-            display_piece(gua, 3)
-            
-        c7, c8, c9 = st.columns([1, 1, 1]) 
-        with c8: 
-            display_piece(gua, 5)
+        c1, c2, c3 = st.columns([1, 1, 1]); 
+        with c2: display_piece(gua, 4)
+        c4, c5, c6 = st.columns([1, 1, 1]); 
+        with c4: display_piece(gua, 2); with c5: display_piece(gua, 1); with c6: display_piece(gua, 3)
+        c7, c8, c9 = st.columns([1, 1, 1]); 
+        with c8: display_piece(gua, 5)
         
         st.markdown("---")
         col_res1, col_res2 = st.columns(2)
@@ -145,10 +125,15 @@ if st.session_state.current_mode == "FULL":
         col_res1.metric("能量淨分 (Score)", f"{net_gain}", status)
         
         exemption = check_exemption(gua)
-        if exemption: 
-            col_res2.warning(f"特殊格局：{exemption[0]}") 
-        else: 
-            col_res2.info("格局：平穩發展")
+        if exemption: col_res2.warning(f"特殊格局：{exemption[0]}"); 
+        else: col_res2.info("格局：平穩發展")
+        
+        # 加入該階段的三才缺失提示
+        trinity = analyze_trinity_detailed(gua)
+        if trinity['missing_heaven']: st.error(f"❌ 缺天：{trinity['missing_heaven']['reason']}")
+        if trinity['missing_human']: st.error(f"❌ 缺人：{trinity['missing_human']['reason']}")
+        if trinity['missing_earth']: st.error(f"❌ 缺地：{trinity['missing_earth']['reason']}")
+
         st.markdown("</div>", unsafe_allow_html=True)
     st.warning("⚠️ **71~80歲及晚年：** 需參照餘棋或重新起卦進行專項健康分析。")
 
@@ -161,62 +146,86 @@ elif st.session_state.current_mode == "SINGLE":
     
     analysis_results = calculate_net_gain_from_gua(current_gua) 
     health_analysis = analyze_health_and_luck(current_gua)
+    trinity_detailed = analyze_trinity_detailed(current_gua) # 取得詳細分析
 
     st.header(f"✅ 單卦解析：{sub_query}")
-    
-    # 修正：將 with 語句分行寫
-    col_u1, col_u2, col_u3 = st.columns([1, 1, 1]) 
-    with col_u2: 
-        display_piece(current_gua, 4)
-        
-    col_m1, col_m2, col_m3 = st.columns([1, 1, 1]) 
-    with col_m1: 
-        display_piece(current_gua, 2)
-    with col_m2: 
-        display_piece(current_gua, 1)
-    with col_m3: 
-        display_piece(current_gua, 3)
-        
-    col_d1, col_d2, col_d3 = st.columns([1, 1, 1]) 
-    with col_d2: 
-        display_piece(current_gua, 5)
+    col_u1, col_u2, col_u3 = st.columns([1, 1, 1]); 
+    with col_u2: display_piece(current_gua, 4)
+    col_m1, col_m2, col_m3 = st.columns([1, 1, 1]); 
+    with col_m1: display_piece(current_gua, 2); with col_m2: display_piece(current_gua, 1); with col_m3: display_piece(current_gua, 3)
+    col_d1, col_d2, col_d3 = st.columns([1, 1, 1]); 
+    with col_d2: display_piece(current_gua, 5)
 
     st.markdown("---")
     
-    tab1, tab2, tab3 = st.tabs(["📊 收穫與付出 (能量分數)", "✨ 格局與建議", "🧬 深入解讀"])
+    tab1, tab2, tab3 = st.tabs(["📊 收穫與付出 (能量分數)", "✨ 格局與建議", "🧬 深入解讀 (含缺失化解)"])
     
     with tab1:
         st.subheader("💰 能量互動法則計算 (Score)")
         gain = analysis_results['gain']
         cost = analysis_results['cost']
         net = analysis_results['net_gain']
-        
         c1, c2, c3 = st.columns(3)
-        c1.metric("收穫 (Gain)", f"{gain} 分", "吃掉對方的能量")
-        c2.metric("付出 (Cost)", f"{cost} 分", "投入的本金/能量")
-        c3.metric("淨利 (Net)", f"{net} 分", "獲利" if net > 0 else "虧損", delta_color="normal")
+        c1.metric("收穫", f"{gain} 分"); c2.metric("付出", f"{cost} 分"); c3.metric("淨利", f"{net} 分", delta_color="normal")
         
         if sub_query == "投資/財運":
-            if net > 0: st.success(f"🎉 **獲利判斷：** 收穫 > 付出 (淨利 {net} 分)，投資可行，獲利機會高！")
-            elif net < 0: st.error(f"📉 **風險判斷：** 付出 > 收穫 (虧損 {abs(net)} 分)，建議觀望或保守。")
-            else: st.info("⚖️ **平衡判斷：** 收支平衡，無明顯獲利。")
+            if net > 0: st.success(f"🎉 **獲利判斷：** 淨利 {net} 分，投資可行！")
+            elif net < 0: st.error(f"📉 **風險判斷：** 虧損 {abs(net)} 分，建議觀望。")
+            else: st.info("⚖️ **平衡判斷：** 收支平衡。")
         else:
-            st.info(f"能量淨值：{net} 分。正分代表運勢上揚，負分代表內耗或阻礙。")
-
-        with st.expander("查看詳細計算過程"):
-            st.dataframe(pd.DataFrame(analysis_results['interactions']))
+            st.info(f"能量淨值：{net} 分。")
+        with st.expander("詳細計算"): st.dataframe(pd.DataFrame(analysis_results['interactions']))
         
     with tab2:
         exemption = check_exemption(current_gua)
         if exemption: st.success(f"特殊格局：{exemption[0]}"); 
         else: st.info("無特殊格局")
-        
         if sub_query == "事業查詢":
             if check_career_pattern(current_gua): st.success("符合事業格！")
-        
         for warn in health_analysis['health_warnings']: st.warning(warn)
             
     with tab3:
+        # 1. 顯示三才缺失分析 (核心新增區塊)
+        st.subheader("🔍 天地人三才缺失檢測")
+        
+        cols = st.columns(3)
+        
+        # 缺天
+        if trinity_detailed['missing_heaven']:
+            with cols[0]:
+                st.error("❌ 缺天 (無上格)")
+                st.markdown(f"**原因：** {trinity_detailed['missing_heaven']['reason']}")
+                st.markdown(f"**特質：** {trinity_detailed['missing_heaven']['desc']}")
+                with st.expander("💡 化解建議"):
+                    st.write(trinity_detailed['missing_heaven']['advice'])
+        else:
+            cols[0].success("✅ 天格穩固 (長輩/天助)")
+
+        # 缺人
+        if trinity_detailed['missing_human']:
+            with cols[1]:
+                st.error("❌ 缺人 (無中格)")
+                st.markdown(f"**原因：** {trinity_detailed['missing_human']['reason']}")
+                st.markdown(f"**特質：** {trinity_detailed['missing_human']['desc']}")
+                with st.expander("💡 化解建議"):
+                    st.write(trinity_detailed['missing_human']['advice'])
+        else:
+            cols[1].success("✅ 人格穩固 (人和/團隊)")
+
+        # 缺地
+        if trinity_detailed['missing_earth']:
+            with cols[2]:
+                st.error("❌ 缺地 (無下格)")
+                st.markdown(f"**原因：** {trinity_detailed['missing_earth']['reason']}")
+                st.markdown(f"**特質：** {trinity_detailed['missing_earth']['desc']}")
+                with st.expander("💡 化解建議"):
+                    st.write(trinity_detailed['missing_earth']['advice'])
+        else:
+            cols[2].success("✅ 地格穩固 (財庫/根基)")
+
+        st.markdown("---")
+
+        # 2. 其他特定主題分析
         if sub_query == "健康分析":
             st.write(health_analysis['health_warnings'])
             if check_consumption_at_1_or_5(current_gua): st.error("留意消耗格影響健康。")
@@ -225,5 +234,3 @@ elif st.session_state.current_mode == "SINGLE":
              st.write(f"前世身分參考：{piece_1[1]}")
         elif sub_query == "離婚議題" and gender == "女":
              st.warning("請留意好朋友格在2-3或4-5的影響。")
-        else:
-            st.info("請參考通用運勢分析。")
