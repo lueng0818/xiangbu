@@ -75,15 +75,25 @@ with st.sidebar:
             if is_all_same_color(new_gua):
                 st.session_state.reroll_count += 1
                 if st.session_state.reroll_count == 1:
-                    with st.spinner('不成卦，重抽中...'): time.sleep(1); new_gua = generate_random_gua()
+                    with st.spinner('不成卦，重抽中...'): 
+                        time.sleep(1)
+                        new_gua = generate_random_gua()
                     if is_all_same_color(new_gua):
-                        st.session_state.current_gua = new_gua; st.session_state.message = "❌ 兩次不成卦，暗示不可為。"; st.session_state.final_result_status = "REJECTED"
+                        st.session_state.current_gua = new_gua
+                        st.session_state.message = "❌ 兩次不成卦，暗示不可為。"
+                        st.session_state.final_result_status = "REJECTED"
                     else:
-                        st.session_state.current_gua = new_gua; st.session_state.message = "🚨 重抽成功。"; st.session_state.final_result_status = "VALID"
+                        st.session_state.current_gua = new_gua
+                        st.session_state.message = "🚨 重抽成功。"
+                        st.session_state.final_result_status = "VALID"
                 else:
-                     st.session_state.message = "請刷新重試。"; st.session_state.final_result_status = "REJECTED" 
+                     st.session_state.message = "請刷新重試。"
+                     st.session_state.final_result_status = "REJECTED" 
             else:
-                st.session_state.current_gua = new_gua; st.session_state.reroll_count = 0; st.session_state.message = "卦象生成成功。"; st.session_state.final_result_status = "VALID"
+                st.session_state.current_gua = new_gua
+                st.session_state.reroll_count = 0
+                st.session_state.message = "卦象生成成功。"
+                st.session_state.final_result_status = "VALID"
         st.success(st.session_state.message)
         st.rerun()
 
@@ -110,12 +120,23 @@ if st.session_state.current_mode == "FULL":
         analysis = calculate_net_gain_from_gua(gua)
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
-        c1, c2, c3 = st.columns([1, 1, 1]); 
-        with c2: display_piece(gua, 4)
-        c4, c5, c6 = st.columns([1, 1, 1]); 
-        with c4: display_piece(gua, 2); with c5: display_piece(gua, 1); with c6: display_piece(gua, 3)
-        c7, c8, c9 = st.columns([1, 1, 1]); 
-        with c8: display_piece(gua, 5)
+        
+        # 修正：將 with 語句分行寫，避免 SyntaxError
+        c1, c2, c3 = st.columns([1, 1, 1]) 
+        with c2: 
+            display_piece(gua, 4)
+            
+        c4, c5, c6 = st.columns([1, 1, 1]) 
+        with c4: 
+            display_piece(gua, 2)
+        with c5: 
+            display_piece(gua, 1)
+        with c6: 
+            display_piece(gua, 3)
+            
+        c7, c8, c9 = st.columns([1, 1, 1]) 
+        with c8: 
+            display_piece(gua, 5)
         
         st.markdown("---")
         col_res1, col_res2 = st.columns(2)
@@ -124,8 +145,10 @@ if st.session_state.current_mode == "FULL":
         col_res1.metric("能量淨分 (Score)", f"{net_gain}", status)
         
         exemption = check_exemption(gua)
-        if exemption: col_res2.warning(f"特殊格局：{exemption[0]}"); 
-        else: col_res2.info("格局：平穩發展")
+        if exemption: 
+            col_res2.warning(f"特殊格局：{exemption[0]}") 
+        else: 
+            col_res2.info("格局：平穩發展")
         st.markdown("</div>", unsafe_allow_html=True)
     st.warning("⚠️ **71~80歲及晚年：** 需參照餘棋或重新起卦進行專項健康分析。")
 
@@ -140,12 +163,23 @@ elif st.session_state.current_mode == "SINGLE":
     health_analysis = analyze_health_and_luck(current_gua)
 
     st.header(f"✅ 單卦解析：{sub_query}")
-    col_u1, col_u2, col_u3 = st.columns([1, 1, 1]); 
-    with col_u2: display_piece(current_gua, 4)
-    col_m1, col_m2, col_m3 = st.columns([1, 1, 1]); 
-    with col_m1: display_piece(current_gua, 2); with col_m2: display_piece(current_gua, 1); with col_m3: display_piece(current_gua, 3)
-    col_d1, col_d2, col_d3 = st.columns([1, 1, 1]); 
-    with col_d2: display_piece(current_gua, 5)
+    
+    # 修正：將 with 語句分行寫
+    col_u1, col_u2, col_u3 = st.columns([1, 1, 1]) 
+    with col_u2: 
+        display_piece(current_gua, 4)
+        
+    col_m1, col_m2, col_m3 = st.columns([1, 1, 1]) 
+    with col_m1: 
+        display_piece(current_gua, 2)
+    with col_m2: 
+        display_piece(current_gua, 1)
+    with col_m3: 
+        display_piece(current_gua, 3)
+        
+    col_d1, col_d2, col_d3 = st.columns([1, 1, 1]) 
+    with col_d2: 
+        display_piece(current_gua, 5)
 
     st.markdown("---")
     
@@ -180,7 +214,6 @@ elif st.session_state.current_mode == "SINGLE":
         if sub_query == "事業查詢":
             if check_career_pattern(current_gua): st.success("符合事業格！")
         
-        # 顯示氣血建議 (根據指南 6.1)
         for warn in health_analysis['health_warnings']: st.warning(warn)
             
     with tab3:
