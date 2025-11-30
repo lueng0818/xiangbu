@@ -53,7 +53,11 @@ if 'current_gua' not in st.session_state: st.session_state.current_gua = []
 with st.sidebar:
     st.header("天機奧秘，誠心求卜")
     st.markdown("### ⚠️ 占卜前重要須知")
-    st.warning("**1. 態度**：保持尊重及恭敬。\n**2. 不成卦**：兩次全黑/紅，不可為。\n**3. 免責**：僅供養生參考，不取代醫療。")
+    st.warning("""
+        **1. 態度為先**：請保持尊重及恭敬。
+        **2. 不成卦**：兩次全黑/全紅，暗示不可為。
+        **3. 醫療免責**：本分析僅供養生參考，不可取代醫療診斷。
+    """)
     
     st.markdown("---")
     st.header("1. 基本資料")
@@ -69,7 +73,7 @@ with st.sidebar:
         st.info("使用完整32支棋，排布11~80歲人生架構。")
         if st.button("🚀 排布全盤流年", type="primary"):
             st.session_state.current_mode = "FULL"
-            with st.spinner('排布全盤流年中...'):
+            with st.spinner('正在洗牌、切牌、排布全盤流年...'):
                 time.sleep(1.5)
                 st.session_state.full_life_gua = generate_full_life_gua()
                 st.session_state.final_result_status = "VALID"
@@ -131,6 +135,7 @@ if st.session_state.current_mode == "FULL":
     for stage in life_stages:
         gua = full_data[stage]
         analysis = calculate_net_gain_from_gua(gua)
+        coord_report = analyze_coordinate_map(gua, gender)
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
         
@@ -148,13 +153,9 @@ if st.session_state.current_mode == "FULL":
         net_gain = analysis['net_gain']
         status = "運勢強勁 🚀" if net_gain > 0 else "需保守沈潛 🛡️"
         col_res1.metric("能量淨分 (Score)", f"{net_gain}", status)
-        
         exemption = check_exemption(gua)
-        if exemption: 
-            col_res2.warning(f"特殊格局：{exemption[0]}") 
-        else: 
-            col_res2.info("格局：平穩發展")
-            
+        if exemption: col_res2.warning(f"特殊格局：{exemption[0]}") 
+        else: col_res2.info("格局：平穩發展")
         trinity = analyze_trinity_detailed(gua)
         if trinity['missing_heaven']: st.error(f"❌ 缺天：{trinity['missing_heaven']['reason']}")
         if trinity['missing_human']: st.error(f"❌ 缺人：{trinity['missing_human']['reason']}")
@@ -180,7 +181,6 @@ elif st.session_state.current_mode == "SINGLE":
     piece_analysis = get_advanced_piece_analysis(current_gua)
 
     st.header(f"✅ 單卦解析：{sub_query}")
-    
     col_u1, col_u2, col_u3 = st.columns([1, 1, 1])
     with col_u2: display_piece(current_gua, 4)
     col_m1, col_m2, col_m3 = st.columns([1, 1, 1])
@@ -194,9 +194,6 @@ elif st.session_state.current_mode == "SINGLE":
     
     tab1, tab2, tab3, tab4 = st.tabs(["📊 能量分數", "✨ 格局與建議", "🧬 深度解讀", "📍 座標定位"])
     
-    # -----------------------
-    # Tab 1: 能量量化計分
-    # -----------------------
     with tab1:
         st.subheader(f"📊 {sub_query} - 量化損益表")
         c1, c2, c3 = st.columns(3)
@@ -217,22 +214,15 @@ elif st.session_state.current_mode == "SINGLE":
                 st.markdown(f"**➖ {score_report['label_B']}**"); 
                 for d in score_report["details_B"]: st.write(f"- {d}")
 
-    # -----------------------
-    # Tab 2: 格局與建議 (符號學)
-    # -----------------------
     with tab2:
-        # 1. 角色設定卡
         st.subheader(f"🎭 您的當下角色：{piece_analysis['role_title']}")
         st.info(f"**狀態解析：** {piece_analysis['self_desc']}")
         for warn in piece_analysis["special_warnings"]: st.warning(warn)
         st.markdown("---")
-
-        # 2. 格局檢查
         exemption = check_exemption(current_gua)
         if exemption: st.success(f"特殊格局：{exemption[0]}")
         else: st.info("無特殊格局 (五行流通)")
         
-        # 3. 根據主題顯示 SOP 建議
         st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
         if sub_query == "問運勢":
             st.markdown("#### 💡 運勢諮詢 SOP")
@@ -254,9 +244,6 @@ elif st.session_state.current_mode == "SINGLE":
         st.markdown("---")
         for warn in health_analysis['health_warnings']: st.warning(warn)
 
-    # -----------------------
-    # Tab 3: 深度解讀 (身心/三才)
-    # -----------------------
     with tab3:
         if sub_query == "健康分析":
             st.error("⚠️ **醫療免責聲明：** 本分析僅供養生參考，不可取代醫療診斷。")
@@ -301,9 +288,6 @@ elif st.session_state.current_mode == "SINGLE":
             elif sub_query == "離婚議題" and gender == "女":
                  st.warning("請留意好朋友格在2-3或4-5的影響。")
 
-    # -----------------------
-    # Tab 4: 座標定位
-    # -----------------------
     with tab4:
         st.subheader("🗺️ 五支棋座標地圖")
         col_v1, col_v2, col_v3 = st.columns(3)
