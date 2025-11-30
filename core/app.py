@@ -1,10 +1,12 @@
 import streamlit as st
 import pandas as pd
 import time
-# 【修正點 1】: 確保使用正確的導入路徑 (從 data 檔案導入)
-from data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
-# 【修正點 2】: 確保從 rules 檔案導入
-from rules import generate_random_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference
+# 使用相對導入 (從 .data 導入)
+from .data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
+# 使用相對導入 (從 .rules 導入)
+from .rules import generate_random_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference
+
+
 # ----------------------------------------------
 # 輔助函數 (放置在腳本頂部，供程式碼調用)
 # ----------------------------------------------
@@ -277,5 +279,6 @@ with tab3:
     st.markdown("---")
     st.subheader("通用健康與人際關係基礎分析")
     st.write("請參考上方五行與氣血警示。")
+
 
 
