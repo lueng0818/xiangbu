@@ -1,5 +1,6 @@
 import random
-from .data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
+# 將 from .data import ... 改為 from data import ...
+from data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
 
 # ==============================================================================
 # 核心邏輯函數
@@ -233,4 +234,5 @@ def calculate_net_gain_from_gua(current_gua):
     return {
         "gain": round(total_gain, 2), "cost": round(total_cost, 2), 
         "net_gain": round(total_gain - total_cost, 2), "interactions": interactions
+
     }
