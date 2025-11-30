@@ -4,7 +4,7 @@ import time
 import os
 from data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
 # 導入所有邏輯函數
-from rules import generate_random_gua, generate_full_life_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference, analyze_trinity_detailed, analyze_holistic_health, analyze_coordinate_map, analyze_body_hologram
+from rules import generate_random_gua, generate_full_life_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference, analyze_trinity_detailed, analyze_holistic_health, analyze_coordinate_map, analyze_body_hologram, calculate_score_by_mode, get_advanced_piece_analysis
 
 # ----------------------------------------------
 # 輔助函數
@@ -53,11 +53,7 @@ if 'current_gua' not in st.session_state: st.session_state.current_gua = []
 with st.sidebar:
     st.header("天機奧秘，誠心求卜")
     st.markdown("### ⚠️ 占卜前重要須知")
-    st.warning("""
-        **1. 態度為先**：請保持尊重及恭敬。
-        **2. 不成卦**：兩次全黑/全紅，暗示不可為。
-        **3. 醫療免責**：本分析僅供養生參考，不可取代醫療診斷。
-    """)
+    st.warning("**1. 態度**：保持尊重及恭敬。\n**2. 不成卦**：兩次全黑/紅，不可為。\n**3. 免責**：僅供養生參考，不取代醫療。")
     
     st.markdown("---")
     st.header("1. 基本資料")
@@ -73,7 +69,7 @@ with st.sidebar:
         st.info("使用完整32支棋，排布11~80歲人生架構。")
         if st.button("🚀 排布全盤流年", type="primary"):
             st.session_state.current_mode = "FULL"
-            with st.spinner('正在洗牌、切牌、排布全盤流年...'):
+            with st.spinner('排布全盤流年中...'):
                 time.sleep(1.5)
                 st.session_state.full_life_gua = generate_full_life_gua()
                 st.session_state.final_result_status = "VALID"
@@ -123,7 +119,7 @@ if st.session_state.current_mode == "SINGLE" and st.session_state.sub_query == "
     st.stop()
 
 # ==============================================================================
-# 模式 A: 全盤流年顯示 (修復版)
+# 模式 A: 全盤流年顯示
 # ==============================================================================
 if st.session_state.current_mode == "FULL":
     full_data = st.session_state.full_life_gua
@@ -135,36 +131,30 @@ if st.session_state.current_mode == "FULL":
     for stage in life_stages:
         gua = full_data[stage]
         analysis = calculate_net_gain_from_gua(gua)
-        coord_report = analyze_coordinate_map(gua, gender)
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
         
-        # --- 修正後的排版 (正確分行) ---
         c1, c2, c3 = st.columns([1, 1, 1])
-        with c2: 
-            display_piece(gua, 4)
-            
+        with c2: display_piece(gua, 4)
         c4, c5, c6 = st.columns([1, 1, 1])
-        with c4: 
-            display_piece(gua, 2)
-        with c5: 
-            display_piece(gua, 1)
-        with c6: 
-            display_piece(gua, 3)
-            
+        with c4: display_piece(gua, 2)
+        with c5: display_piece(gua, 1)
+        with c6: display_piece(gua, 3)
         c7, c8, c9 = st.columns([1, 1, 1])
-        with c8: 
-            display_piece(gua, 5)
-        # -------------------------------
-
+        with c8: display_piece(gua, 5)
+        
         st.markdown("---")
         col_res1, col_res2 = st.columns(2)
         net_gain = analysis['net_gain']
         status = "運勢強勁 🚀" if net_gain > 0 else "需保守沈潛 🛡️"
         col_res1.metric("能量淨分 (Score)", f"{net_gain}", status)
+        
         exemption = check_exemption(gua)
-        if exemption: col_res2.warning(f"特殊格局：{exemption[0]}") 
-        else: col_res2.info("格局：平穩發展")
+        if exemption: 
+            col_res2.warning(f"特殊格局：{exemption[0]}") 
+        else: 
+            col_res2.info("格局：平穩發展")
+            
         trinity = analyze_trinity_detailed(gua)
         if trinity['missing_heaven']: st.error(f"❌ 缺天：{trinity['missing_heaven']['reason']}")
         if trinity['missing_human']: st.error(f"❌ 缺人：{trinity['missing_human']['reason']}")
@@ -173,244 +163,154 @@ if st.session_state.current_mode == "FULL":
     st.warning("⚠️ **71~80歲及晚年：** 需參照餘棋或重新起卦進行專項健康分析。")
 
 # ==============================================================================
-# 模式 B: 單卦問事 (修復版)
+# 模式 B: 單卦問事 (整合 SOP)
 # ==============================================================================
 elif st.session_state.current_mode == "SINGLE":
     current_gua = st.session_state.current_gua
     sub_query = st.session_state.sub_query
     
+    # 執行所有分析
     analysis_results = calculate_net_gain_from_gua(current_gua) 
     health_analysis = analyze_health_and_luck(current_gua)
     trinity_detailed = analyze_trinity_detailed(current_gua)
     holistic_report = analyze_holistic_health(current_gua)
     coord_report = analyze_coordinate_map(current_gua, gender)
     body_diagnosis = analyze_body_hologram(current_gua)
+    score_report = calculate_score_by_mode(current_gua, mode={"問運勢":"general","事業查詢":"career","前世格局":"karma","健康分析":"health","投資/財運":"investment","感情/關係":"love","離婚議題":"divorce"}.get(sub_query,"general"))
+    piece_analysis = get_advanced_piece_analysis(current_gua)
 
     st.header(f"✅ 單卦解析：{sub_query}")
     
-    # --- 修正後的排版 (正確分行) ---
     col_u1, col_u2, col_u3 = st.columns([1, 1, 1])
-    with col_u2: 
-        display_piece(current_gua, 4)
-        
+    with col_u2: display_piece(current_gua, 4)
     col_m1, col_m2, col_m3 = st.columns([1, 1, 1])
-    with col_m1: 
-        display_piece(current_gua, 2)
-    with col_m2: 
-        display_piece(current_gua, 1)
-    with col_m3: 
-        display_piece(current_gua, 3)
-        
+    with col_m1: display_piece(current_gua, 2)
+    with col_m2: display_piece(current_gua, 1)
+    with col_m3: display_piece(current_gua, 3)
     col_d1, col_d2, col_d3 = st.columns([1, 1, 1])
-    with col_d2: 
-        display_piece(current_gua, 5)
-    # -------------------------------
+    with col_d2: display_piece(current_gua, 5)
 
     st.markdown("---")
     
-    # 動態調整 Tabs 名稱，根據主題
-    tab_names = ["📊 能量分數", "✨ 格局與建議", "🧬 深度解讀", "📍 座標定位"]
-    tab1, tab2, tab3, tab4 = st.tabs(tab_names)
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 能量分數", "✨ 格局與建議", "🧬 深度解讀", "📍 座標定位"])
     
     # -----------------------
-    # Tab 1: 能量/財運分數 (整合 SOP)
+    # Tab 1: 能量量化計分
     # -----------------------
     with tab1:
-        st.subheader("💰 能量互動法則計算 (Score)")
-        gain = analysis_results['gain']; cost = analysis_results['cost']; net = analysis_results['net_gain']
+        st.subheader(f"📊 {sub_query} - 量化損益表")
         c1, c2, c3 = st.columns(3)
-        c1.metric("收穫", f"{gain} 分"); c2.metric("付出", f"{cost} 分"); c3.metric("淨利", f"{net} 分", delta_color="normal")
+        c1.metric(score_report["label_A"], f"{score_report['score_A']} 分")
+        c2.metric(score_report["label_B"], f"{score_report['score_B']} 分")
+        c3.metric(score_report["label_Net"], f"{score_report['net_score']} 分", delta_color="normal")
         
-        if sub_query == "投資/財運":
-            st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
-            st.markdown("#### 💡 投資諮詢 SOP")
-            if net > 0: st.success(f"🎉 **進場判斷：** 收穫 > 付出 (淨利 {net} 分) 且地格(下)穩固，可考慮投資。")
-            elif net < 0: st.error(f"📉 **避險建議：** 付出 > 收穫 (虧損 {abs(net)} 分)，建議觀望。若「缺地格」，建議買房或黃金(強制儲蓄)。")
-            else: st.info("⚖️ **平衡判斷：** 收支平衡，無明顯獲利。")
+        if score_report["net_score"] > 0: st.success(score_report["interpretation"])
+        elif score_report["net_score"] < 0: st.error(score_report["interpretation"])
+        else: st.info(score_report["interpretation"])
             
-            # 特殊吃法提示
-            piece_names = [p[1] for p in current_gua]
-            if '包' in piece_names or '炮' in piece_names:
-                st.warning("⚠️ **提醒：** 若出現「包/炮」在中間且被吃，小心詐騙或誤判資訊。")
-            st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.info(f"能量淨值：{net} 分。正分代表運勢上揚，負分代表內耗或阻礙。")
-        
-        with st.expander("詳細計算"): st.dataframe(pd.DataFrame(analysis_results['interactions']))
+        with st.expander("查看詳細計分過程"):
+            c_left, c_right = st.columns(2)
+            with c_left:
+                st.markdown(f"**➕ {score_report['label_A']}**"); 
+                for d in score_report["details_A"]: st.write(f"- {d}")
+            with c_right:
+                st.markdown(f"**➖ {score_report['label_B']}**"); 
+                for d in score_report["details_B"]: st.write(f"- {d}")
 
     # -----------------------
-    # Tab 2: 格局與建議 (整合 SOP)
-    # ------------------------------------
+    # Tab 2: 格局與建議 (符號學)
+    # -----------------------
     with tab2:
+        # 1. 角色設定卡
+        st.subheader(f"🎭 您的當下角色：{piece_analysis['role_title']}")
+        st.info(f"**狀態解析：** {piece_analysis['self_desc']}")
+        for warn in piece_analysis["special_warnings"]: st.warning(warn)
+        st.markdown("---")
+
+        # 2. 格局檢查
         exemption = check_exemption(current_gua)
         if exemption: st.success(f"特殊格局：{exemption[0]}")
-        else: st.info("無特殊格局")
+        else: st.info("無特殊格局 (五行流通)")
         
-        # 1. 問運勢 SOP
+        # 3. 根據主題顯示 SOP 建議
+        st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
         if sub_query == "問運勢":
-            st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
             st.markdown("#### 💡 運勢諮詢 SOP")
             red_c = health_analysis['red_count']; black_c = health_analysis['black_count']
-            
-            st.markdown("**1. 情緒指數：**")
             if (red_c==2 and black_c==3) or (red_c==3 and black_c==2): st.success("✅ **二三配：** 情緒最穩。")
-            else: st.warning("⚠️ **一四配/全色：** 情緒起伏大。若盤面顯示焦慮（如紅炮多），建議先處理情緒再做決定。")
-            
-            st.markdown("**2. 避凶提醒：**")
-            p_names = [p[1] for p in current_gua]
-            if '車' in p_names or '俥' in p_names: st.warning("🚗 若出現車吃我們，出入請留意交通平安。")
-            if '仕' in p_names or '士' in p_names: st.warning("🏥 若出現仕吃我們，留意意外或開刀風險。")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        # 2. 事業查詢 SOP
+            else: st.warning("⚠️ **一四配/全色：** 情緒起伏大。")
         elif sub_query == "事業查詢":
-            st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
             st.markdown("#### 💡 事業諮詢 SOP")
-            if check_career_pattern(current_gua): 
-                st.success("🏆 **事業格 (車馬包)：** 有氣勢、敢衝，適合創業或業務性質。")
-            else:
-                st.info("🏢 **穩定格 (將帥/兵卒)：** 若中間是將帥或兵卒，建議穩定就業，踏實累積。")
-            
-            p1_name = next(p[1] for p in current_gua if p[0] == 1)
-            st.markdown(f"**行動力建議 (核心 {p1_name})：**")
-            if p1_name in ['兵','卒']: st.write("👉 做就對了，想太多沒用。")
-            elif p1_name in ['包','炮']: st.write("👉 不要好高騖遠，請落地執行。")
-            
-            # 貴人與小人檢查
-            interference = check_interference(current_gua)
-            if interference: st.error("⚠️ **職場人際：** 犯小人 (被馬炮吃)，建議低調行事，不要強出頭。")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        # 通用氣血建議
+            st.markdown(f"**棋子特質建議：** {piece_analysis['career_desc']}")
+            if check_career_pattern(current_gua): st.success("🏆 **事業格 (車馬包)**")
+        elif sub_query == "感情/關係":
+            st.markdown("#### 💡 感情諮詢 SOP")
+            st.markdown(f"**棋子特質建議：** {piece_analysis['love_desc']}")
+        elif sub_query == "健康分析":
+            st.markdown("#### 💡 健康諮詢 SOP")
+            st.markdown(f"**棋子體質提醒：** {piece_analysis['health_desc']}")
+        st.markdown("</div>", unsafe_allow_html=True)
+        
         st.markdown("---")
         for warn in health_analysis['health_warnings']: st.warning(warn)
 
     # -----------------------
-    # Tab 3: 深度解讀 (整合 SOP)
-    # ------------------------------------
+    # Tab 3: 深度解讀 (身心/三才)
+    # -----------------------
     with tab3:
-        # 1. 健康分析 SOP
         if sub_query == "健康分析":
-            # 醫療免責 (最優先)
-            st.error("⚠️ **醫療免責聲明：** 本分析僅供養生參考，不可取代醫療診斷。若有不適請優先就醫。")
+            st.error("⚠️ **醫療免責聲明：** 本分析僅供養生參考，不可取代醫療診斷。")
+            st.subheader("🏥 中醫五行身心深度診斷")
             
-            st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
-            st.markdown("#### 💡 健康諮詢 SOP")
-            st.markdown("**1. 功效判斷 (吃子法則)：**")
-            st.write("- **可吃對方**：代表身體可吸收 (保健品/食物)。")
-            st.write("- **被對方吃**：代表對身體有修復/排毒效果。")
-            st.write("- **互吃**：最佳卦象 (吸收且有效)。")
-            
-            st.markdown("**2. 就醫提醒：**")
-            if check_consumption_at_1_or_5(current_gua): st.error("🚨 出現「消耗格」或「被通吃」，務必建議進行正規健康檢查。")
-            
-            st.markdown("**3. 五行缺失/過剩：**")
+            remedy = health_analysis.get('remedy', {})
+            st.markdown(f"#### 1. 整體氣血與調理建議")
+            if "Red" in str(remedy) or "血氣旺" in str(remedy.get('status','')):
+                st.warning(f"**{remedy['status']}**"); st.write(f"👉 **建議行動：{remedy['method']}**")
+            elif "Black" in str(remedy) or "氣血旺" in str(remedy.get('status','')):
+                st.info(f"**{remedy['status']}**"); st.write(f"👉 **建議行動：{remedy['method']}**")
+            else:
+                st.success(f"**{remedy['status']}**")
+
+            st.markdown(f"#### 2. 身體部位全息掃描")
             if body_diagnosis:
                 for diag in body_diagnosis: st.write(f"- {diag}")
-            st.markdown("</div>", unsafe_allow_html=True)
+            else: st.success("目前盤面上無顯著的病灶訊號。")
+            
+            with st.expander("查看深度心理與五行分析"):
+                core = holistic_report["core"]
+                if core: st.markdown(f"**核心 ({core['name']})：**"); st.write(f"❤️ 心：{core['psycho']}"); st.write(f"🩺 身：{core['physio']}")
+                if holistic_report["interaction"]: st.write("**致病壓力源：**"); 
+                for msg in holistic_report["interaction"]: st.error(msg)
 
-        # 2. 前世格局 SOP
-        elif sub_query == "前世格局":
-            st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
-            st.markdown("#### 💡 前世今生 SOP")
-            piece_1 = next(p for p in current_gua if p[0] == 1)
-            identity_map = {'將': '將領/軍官', '帥': '將領/軍官', '士': '官員', '仕': '官員', '象': '修行人', '相': '修行人', '包': '名流/美女', '炮': '名流/美女', '兵': '生意人', '卒': '生意人', '車': '管事者', '俥': '管事者', '馬': '管事者', '傌': '管事者'}
-            st.markdown(f"**1. 前世身分 (核心 {piece_1[1]})：** {identity_map.get(piece_1[1], '一般平民')}")
-            
-            st.markdown("**2. 互動模式建議：**")
-            st.write("- **釋懷與和解**：若盤面互相吞吃，代表上輩子是敵對陣營，這輩子見面易吵架。理解了這個『因』，這輩子要修『和』。")
-            st.write("- **性格解釋**：若中間是『象/相』，上輩子可能是修行人，所以這輩子喜歡靜、不喜與人爭。")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        # 3. 離婚議題 SOP (女命)
-        elif sub_query == "離婚議題" and gender == "女":
-            st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
-            st.markdown("#### 💡 離婚議題 SOP (女命)")
-            
-            # 離婚格條件檢查
-            p1_name = next(p[1] for p in current_gua if p[0] == 1)
-            is_divorce_pattern = False
-            if p1_name in ['將','帥','士','車'] and next(p[2] for p in current_gua if p[0] == 1) == '黑':
-                st.error("⚠️ **核心強勢：** 中間為黑將/帥/士/車，個性太強勢或太孤獨，不利婚姻。")
-                is_divorce_pattern = True
-            
-            st.markdown("**諮詢建議方向：**")
-            if is_divorce_pattern:
-                st.write("👉 **現況分析：** 符合部分離婚格局，這段婚姻可能對您造成極大消耗，分開可能是解脫。")
-            
-            st.write("👉 **關鍵考量：** 請檢查 4/5 (長晚輩位) 是否有「好朋友」？若有，代表為了孩子或長輩，雙方可能還在忍耐。")
-            st.write("👉 **未來展望：** 若決定離婚，建議再卜一卦看「下一盤」運勢是否轉好。")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        # 4. 其他主題顯示通用三才
         else:
             st.subheader("🔍 天地人三才缺失檢測")
             cols = st.columns(3)
             if trinity_detailed['missing_heaven']:
-                with cols[0]:
-                    st.error("❌ 缺天 (無上格)")
-                    st.markdown(f"**特質：** {trinity_detailed['missing_heaven']['desc']}")
-                    with st.expander("💡 化解建議"):
-                        st.write(trinity_detailed['missing_heaven']['advice'])
+                with cols[0]: st.error("❌ 缺天"); st.caption(trinity_detailed['missing_heaven']['reason'])
             else: cols[0].success("✅ 天格穩固")
-
             if trinity_detailed['missing_human']:
-                with cols[1]:
-                    st.error("❌ 缺人 (無中格)")
-                    st.markdown(f"**特質：** {trinity_detailed['missing_human']['desc']}")
-                    with st.expander("💡 化解建議"):
-                        st.write(trinity_detailed['missing_human']['advice'])
+                with cols[1]: st.error("❌ 缺人"); st.caption(trinity_detailed['missing_human']['reason'])
             else: cols[1].success("✅ 人格穩固")
-
             if trinity_detailed['missing_earth']:
-                with cols[2]:
-                    st.error("❌ 缺地 (無下格)")
-                    st.markdown(f"**特質：** {trinity_detailed['missing_earth']['desc']}")
-                    with st.expander("💡 化解建議"):
-                        st.write(trinity_detailed['missing_earth']['advice'])
+                with cols[2]: st.error("❌ 缺地"); st.caption(trinity_detailed['missing_earth']['reason'])
             else: cols[2].success("✅ 地格穩固")
 
-    # -----------------------
-    # Tab 4: 座標定位 (整合 SOP)
-    # ------------------------------------
-    with tab4:
-        st.subheader("🗺️ 五支棋座標地圖 (位置決定角色)")
-        
-        # 感情/關係 SOP
-        if sub_query == "感情/關係":
-            st.markdown("<div class='sop-box'>", unsafe_allow_html=True)
-            st.markdown("#### 💡 感情諮詢 SOP")
-            target_pos = 2 if gender == "男" else 3
-            target_piece = next(p for p in current_gua if p[0] == target_pos)
-            
-            st.markdown(f"**1. 對象特質 ({target_piece[1]})：**")
-            if target_piece[1] in ['車','俥']: st.write("👉 對方個性強勢，建議以柔克剛。")
-            elif target_piece[1] in ['兵','卒']: st.write("👉 對方較木訥被動，建議您多主動引導。")
-            elif target_piece[1] in ['馬','傌','包','炮']: st.write("👉 對方可能帶有曖昧或不穩定因素 (遊走/想飛)。")
-            
-            st.markdown("**2. 潛在危機：**")
-            st.write("👉 請檢查斜對角是否有馬/炮，留意是否有第三者或外力干擾。")
-            st.markdown("</div>", unsafe_allow_html=True)
-            st.markdown("---")
+            if sub_query == "前世格局":
+                 piece_1 = next(p for p in current_gua if p[0] == 1)
+                 st.write(f"前世身分參考：{piece_1[1]}")
+            elif sub_query == "離婚議題" and gender == "女":
+                 st.warning("請留意好朋友格在2-3或4-5的影響。")
 
-        # 顯示座標地圖
+    # -----------------------
+    # Tab 4: 座標定位
+    # -----------------------
+    with tab4:
+        st.subheader("🗺️ 五支棋座標地圖")
         col_v1, col_v2, col_v3 = st.columns(3)
-        with col_v1: 
-            st.markdown("**☁️ 上格 (天/長輩)**")
-            st.write(coord_report["top_support"])
-        with col_v2: 
-            st.markdown("**👤 中格 (人/核心)**")
-            st.write(coord_report["center_status"])
-        with col_v3: 
-            st.markdown("**⛰️ 下格 (地/結果)**")
-            st.write(coord_report["bottom_foundation"])
+        with col_v1: st.markdown("**☁️ 上格**"); st.write(coord_report["top_support"])
+        with col_v2: st.markdown("**👤 中格**"); st.write(coord_report["center_status"])
+        with col_v3: st.markdown("**⛰️ 下格**"); st.write(coord_report["bottom_foundation"])
         st.markdown("---")
         col_h1, col_h2 = st.columns(2)
-        left_role = "妻/女友" if gender == "男" else "姊妹/女同事"
-        with col_h1: 
-            st.markdown(f"**👈 左格 (2) - {left_role}**")
-            st.write(coord_report["love_relationship"] if gender == "男" else coord_report["peer_relationship"])
-        right_role = "兄弟/男同事" if gender == "男" else "夫/男友"
-        with col_h2: 
-            st.markdown(f"**👉 右格 (3) - {right_role}**")
-            st.write(coord_report["peer_relationship"] if gender == "男" else coord_report["love_relationship"])
+        with col_h1: st.markdown("**👈 左格**"); st.write(coord_report["love_relationship"] if gender == "男" else coord_report["peer_relationship"])
+        with col_h2: st.markdown("**👉 右格**"); st.write(coord_report["peer_relationship"] if gender == "男" else coord_report["love_relationship"])
