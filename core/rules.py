@@ -1,5 +1,5 @@
 import random
-# 將 from .data import ... 改為 from data import ...
+# 【修正點 3】: 確保從 data 檔案導入
 from data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
 
 # ==============================================================================
@@ -236,3 +236,4 @@ def calculate_net_gain_from_gua(current_gua):
         "net_gain": round(total_gain - total_cost, 2), "interactions": interactions
 
     }
+
