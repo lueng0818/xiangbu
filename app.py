@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import os
 from data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
-# 導入所有新增的分析函數
+# 導入所有邏輯函數
 from rules import generate_random_gua, generate_full_life_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference, analyze_trinity_detailed, analyze_holistic_health, analyze_coordinate_map, analyze_body_hologram
 
 # ----------------------------------------------
@@ -80,13 +80,21 @@ with st.sidebar:
                         time.sleep(1)
                         new_gua = generate_random_gua()
                     if is_all_same_color(new_gua):
-                        st.session_state.current_gua = new_gua; st.session_state.message = "❌ 兩次不成卦，暗示不可為。"; st.session_state.final_result_status = "REJECTED"
+                        st.session_state.current_gua = new_gua
+                        st.session_state.message = "❌ 兩次不成卦，暗示不可為。"
+                        st.session_state.final_result_status = "REJECTED"
                     else:
-                        st.session_state.current_gua = new_gua; st.session_state.message = "🚨 重抽成功。"; st.session_state.final_result_status = "VALID"
+                        st.session_state.current_gua = new_gua
+                        st.session_state.message = "🚨 重抽成功。"
+                        st.session_state.final_result_status = "VALID"
                 else:
-                     st.session_state.message = "請刷新重試。"; st.session_state.final_result_status = "REJECTED" 
+                     st.session_state.message = "請刷新重試。"
+                     st.session_state.final_result_status = "REJECTED" 
             else:
-                st.session_state.current_gua = new_gua; st.session_state.reroll_count = 0; st.session_state.message = "卦象生成成功。"; st.session_state.final_result_status = "VALID"
+                st.session_state.current_gua = new_gua
+                st.session_state.reroll_count = 0
+                st.session_state.message = "卦象生成成功。"
+                st.session_state.final_result_status = "VALID"
         st.success(st.session_state.message)
         st.rerun()
 
@@ -102,6 +110,7 @@ if query_type == "離婚議題" and gender == "男":
 if st.session_state.current_mode == "FULL":
     full_data = st.session_state.full_life_gua
     st.header("📜 象棋數理 - 全盤流年表")
+    
     st.subheader("🏁 總格 (整體命盤核心)")
     with st.expander("查看總格解析", expanded=True):
         st.write("此部分整合全盤能量，建議關注「11~20歲」及「31~40歲」的基礎奠定。")
@@ -110,17 +119,24 @@ if st.session_state.current_mode == "FULL":
     for stage in life_stages:
         gua = full_data[stage]
         analysis = calculate_net_gain_from_gua(gua)
+        coord_report = analyze_coordinate_map(gua, gender)
+        
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
         
         c1, c2, c3 = st.columns([1, 1, 1])
-        with c2: display_piece(gua, 4)
+        with c2: 
+            display_piece(gua, 4)
         c4, c5, c6 = st.columns([1, 1, 1])
-        with c4: display_piece(gua, 2)
-        with c5: display_piece(gua, 1)
-        with c6: display_piece(gua, 3)
+        with c4: 
+            display_piece(gua, 2)
+        with c5: 
+            display_piece(gua, 1)
+        with c6: 
+            display_piece(gua, 3)
         c7, c8, c9 = st.columns([1, 1, 1])
-        with c8: display_piece(gua, 5)
+        with c8: 
+            display_piece(gua, 5)
         
         st.markdown("---")
         col_res1, col_res2 = st.columns(2)
@@ -130,14 +146,18 @@ if st.session_state.current_mode == "FULL":
         
         exemption = check_exemption(gua)
         if exemption: 
-            col_res2.warning(f"特殊格局：{exemption[0]}") 
+            col_res2.warning(f"特殊格局：{exemption[0]} (影響{POSITION_MAP[exemption[1]]['名稱']})") 
         else: 
             col_res2.info("格局：平穩發展")
             
+        # 加入該階段的三才缺失提示 (已修正縮排語法)
         trinity = analyze_trinity_detailed(gua)
-        if trinity['missing_heaven']: st.error(f"❌ 缺天：{trinity['missing_heaven']['reason']}")
-        if trinity['missing_human']: st.error(f"❌ 缺人：{trinity['missing_human']['reason']}")
-        if trinity['missing_earth']: st.error(f"❌ 缺地：{trinity['missing_earth']['reason']}")
+        if trinity['missing_heaven']: 
+            st.error(f"❌ 缺天：{trinity['missing_heaven']['reason']}")
+        if trinity['missing_human']: 
+            st.error(f"❌ 缺人：{trinity['missing_human']['reason']}")
+        if trinity['missing_earth']: 
+            st.error(f"❌ 缺地：{trinity['missing_earth']['reason']}")
 
         st.markdown("</div>", unsafe_allow_html=True)
     st.warning("⚠️ **71~80歲及晚年：** 需參照餘棋或重新起卦進行專項健康分析。")
@@ -157,14 +177,20 @@ elif st.session_state.current_mode == "SINGLE":
     body_diagnosis = analyze_body_hologram(current_gua)
 
     st.header(f"✅ 單卦解析：{sub_query}")
+    
     col_u1, col_u2, col_u3 = st.columns([1, 1, 1])
-    with col_u2: display_piece(current_gua, 4)
+    with col_u2: 
+        display_piece(current_gua, 4)
     col_m1, col_m2, col_m3 = st.columns([1, 1, 1])
-    with col_m1: display_piece(current_gua, 2)
-    with col_m2: display_piece(current_gua, 1)
-    with col_m3: display_piece(current_gua, 3)
+    with col_m1: 
+        display_piece(current_gua, 2)
+    with col_m2: 
+        display_piece(current_gua, 1)
+    with col_m3: 
+        display_piece(current_gua, 3)
     col_d1, col_d2, col_d3 = st.columns([1, 1, 1])
-    with col_d2: display_piece(current_gua, 5)
+    with col_d2: 
+        display_piece(current_gua, 5)
 
     st.markdown("---")
     
@@ -201,51 +227,58 @@ elif st.session_state.current_mode == "SINGLE":
             st.subheader("🏥 中醫五行身心深度診斷")
             st.info("本分析結合中醫五行與心理情緒，找出運勢與健康的『病灶』。")
             
-            remedy = health_analysis.get('remedy', {})
-            st.markdown(f"#### 1. 整體氣血與調理建議")
-            if "Red" in str(remedy) or "血氣旺" in str(remedy.get('status','')):
-                st.warning(f"**{remedy['status']}**"); st.write(f"👉 **建議行動：{remedy['method']}**"); st.caption(f"原理：{remedy['principle']}")
-            elif "Black" in str(remedy) or "氣血旺" in str(remedy.get('status','')):
-                st.info(f"**{remedy['status']}**"); st.write(f"👉 **建議行動：{remedy['method']}**"); st.caption(f"原理：{remedy['principle']}")
-            else:
-                st.success(f"**{remedy['status']}**：{remedy['advice']}")
-
-            st.markdown("---")
-            st.markdown(f"#### 2. 身體部位全息掃描 (鏡像原理)")
-            if body_diagnosis:
-                st.write("根據卦象，請留意以下部位的不適訊號：")
-                for diag in body_diagnosis: st.write(f"- {diag}")
-            else: st.success("目前盤面上無顯著的病灶訊號，身體狀況相對平穩。")
+            core = holistic_report["core"]
+            if core:
+                with st.expander(f"1. 核心狀態 ({core['name']} - 五行屬{core['element']})", expanded=True):
+                    st.markdown(f"**❤️ 當下情緒：** {core['psycho']}")
+                    st.markdown(f"**🩺 身體隱疾：** {core['physio']}")
+                    st.success(f"**🍀 調理建議：** {core['advice']}")
             
+            st.markdown("**2. 盤面能量平衡 (五行偏頗)**")
+            if holistic_report["balance"]["excess"]:
+                for msg in holistic_report["balance"]["excess"]: st.warning(msg)
+            if holistic_report["balance"]["lack"]:
+                for msg in holistic_report["balance"]["lack"]: st.error(msg)
+            if not holistic_report["balance"]["excess"] and not holistic_report["balance"]["lack"]:
+                st.success("五行能量分布平均，身心相對平衡。")
+                
+            st.markdown("**3. 壓力源與致病原因 (剋應與消耗)**")
+            if holistic_report["interaction"]:
+                for msg in holistic_report["interaction"]: st.error(f"⚠️ {msg}")
+            else:
+                st.success("核心位置未受到明顯的剋制或消耗，自我修復能力良好。")
             st.markdown("---")
-            with st.expander("查看深度心理與五行分析"):
-                core = holistic_report["core"]
-                if core:
-                    st.markdown(f"**核心 ({core['name']})：**"); st.write(f"❤️ 心：{core['psycho']}"); st.write(f"🩺 身：{core['physio']}")
-                if holistic_report["balance"]["excess"]:
-                    st.write("**能量過剩：**"); 
-                    for msg in holistic_report["balance"]["excess"]: st.warning(msg)
-                if holistic_report["interaction"]:
-                    st.write("**致病壓力源：**"); 
-                    for msg in holistic_report["interaction"]: st.error(msg)
+            st.subheader("🩸 氣血循環建議")
+            for warn in health_analysis['health_warnings']: st.warning(warn)
 
         else:
+            # 默認顯示天地人三才分析 (已修正縮排語法)
             st.subheader("🔍 天地人三才缺失檢測")
             cols = st.columns(3)
+            
             if trinity_detailed['missing_heaven']:
                 with cols[0]:
-                    st.error("❌ 缺天 (無上格)"); st.markdown(f"**特質：** {trinity_detailed['missing_heaven']['desc']}"); with st.expander("💡 化解建議"): st.write(trinity_detailed['missing_heaven']['advice'])
-            else: cols[0].success("✅ 天格穩固")
+                    st.error("❌ 缺天 (無上格)")
+                    st.markdown(f"**特質：** {trinity_detailed['missing_heaven']['desc']}")
+                    with st.expander("💡 化解建議"):
+                        st.write(trinity_detailed['missing_heaven']['advice'])
+            else: cols[0].success("✅ 天格穩固 (長輩/天助)")
 
             if trinity_detailed['missing_human']:
                 with cols[1]:
-                    st.error("❌ 缺人 (無中格)"); st.markdown(f"**特質：** {trinity_detailed['missing_human']['desc']}"); with st.expander("💡 化解建議"): st.write(trinity_detailed['missing_human']['advice'])
-            else: cols[1].success("✅ 人格穩固")
+                    st.error("❌ 缺人 (無中格)")
+                    st.markdown(f"**特質：** {trinity_detailed['missing_human']['desc']}")
+                    with st.expander("💡 化解建議"):
+                        st.write(trinity_detailed['missing_human']['advice'])
+            else: cols[1].success("✅ 人格穩固 (人和/團隊)")
 
             if trinity_detailed['missing_earth']:
                 with cols[2]:
-                    st.error("❌ 缺地 (無下格)"); st.markdown(f"**特質：** {trinity_detailed['missing_earth']['desc']}"); with st.expander("💡 化解建議"): st.write(trinity_detailed['missing_earth']['advice'])
-            else: cols[2].success("✅ 地格穩固")
+                    st.error("❌ 缺地 (無下格)")
+                    st.markdown(f"**特質：** {trinity_detailed['missing_earth']['desc']}")
+                    with st.expander("💡 化解建議"):
+                        st.write(trinity_detailed['missing_earth']['advice'])
+            else: cols[2].success("✅ 地格穩固 (財庫/根基)")
 
             if sub_query == "前世格局":
                  piece_1 = next(p for p in current_gua if p[0] == 1)
@@ -258,14 +291,33 @@ elif st.session_state.current_mode == "SINGLE":
         st.info("此分析結合了「天地人」垂直軸線與「性別對應」水平軸線，精準定位問題來源。")
         st.markdown("#### 1. 垂直軸線：命運的承載力")
         col_v1, col_v2, col_v3 = st.columns(3)
-        with col_v1: st.markdown("**☁️ 上格 (天/長輩)**"); st.write(coord_report["top_support"])
-        with col_v2: st.markdown("**👤 中格 (人/核心)**"); st.write(coord_report["center_status"])
-        with col_v3: st.markdown("**⛰️ 下格 (地/結果)**"); st.write(coord_report["bottom_foundation"])
+        with col_v1: 
+            st.markdown("**☁️ 上格 (天/長輩)**")
+            st.write(coord_report["top_support"])
+        with col_v2: 
+            st.markdown("**👤 中格 (人/核心)**")
+            st.write(coord_report["center_status"])
+        with col_v3: 
+            st.markdown("**⛰️ 下格 (地/結果)**")
+            st.write(coord_report["bottom_foundation"])
         st.markdown("---")
         st.markdown(f"#### 2. 水平軸線：人生的際遇力 (問卜者：{gender})")
         col_h1, col_h2 = st.columns(2)
+        
         left_role = "妻/女友 (異性位)" if gender == "男" else "姊妹/女同事 (同性位)"
-        with col_h1: st.markdown(f"**👈 左格 (2) - {left_role}**"); st.write(coord_report["love_relationship"] if gender == "男" else coord_report["peer_relationship"])
+        with col_h1: 
+            st.markdown(f"**👈 左格 (2) - {left_role}**")
+            st.write(coord_report["love_relationship"] if gender == "男" else coord_report["peer_relationship"])
+            
         right_role = "兄弟/男同事 (同性位)" if gender == "男" else "夫/男友 (異性位)"
-        with col_h2: st.markdown(f"**👉 右格 (3) - {right_role}**"); st.write(coord_report["peer_relationship"] if gender == "男" else coord_report["love_relationship"])
-        with st.expander("💡 諮詢師的實務應用 SOP"): st.markdown("1. 先看 **中格**，確認狀態與能力。\n2. 再看 **上格**，確認長官挺不挺。\n3. 接著看 **下格**，確認結果有沒有「根」。\n4. 最後看 **左右**，精準定位貴人與小人。")
+        with col_h2: 
+            st.markdown(f"**👉 右格 (3) - {right_role}**")
+            st.write(coord_report["peer_relationship"] if gender == "男" else coord_report["love_relationship"])
+            
+        with st.expander("💡 諮詢師的實務應用 SOP"): 
+            st.markdown("""
+            1. 先看 **中格**，確認狀態與能力。
+            2. 再看 **上格**，確認長官挺不挺。
+            3. 接著看 **下格**，確認結果有沒有「根」。
+            4. 最後看 **左右**，精準定位貴人與小人。
+            """)
