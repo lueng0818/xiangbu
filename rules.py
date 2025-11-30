@@ -1,5 +1,5 @@
 import random
-# 修正導入：從同級檔案 data.py 導入
+# 修正導入：因為在同一層目錄，直接 import data 即可
 from data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
 
 # ==============================================================================
@@ -7,25 +7,32 @@ from data import VALUE_MAP, ATTRIBUTES, PIECE_NAMES, GEOMETRY_RELATION
 # ==============================================================================
 
 def generate_random_gua():
-    """單次占卜：隨機生成五支棋 (維持原功能)。"""
-    all_pieces = [('帥', '紅'), ('將', '黑'), ('士', '紅'), ('象', '黑'), ('馬', '紅'), ('包', '黑'), ('車', '紅'), ('卒', '黑')]
+    """單次占卜：隨機生成五支棋。"""
+    # 使用正確的繁體字元，避免圖片對應錯誤
+    all_pieces = [
+        ('帥', '紅'), ('將', '黑'), 
+        ('仕', '紅'), ('象', '黑'), # 仕/象
+        ('傌', '紅'), ('包', '黑'), # 傌/包
+        ('俥', '紅'), ('卒', '黑')  # 俥/卒 (關鍵修正)
+    ]
     selected_pieces = random.sample(all_pieces, 5)
     
     gua = []
     positions = [1, 2, 3, 4, 5]
     for i in range(5):
         name, color = selected_pieces[i]
-        gua.append((positions[i], name, color, VALUE_MAP.get(name, 0)))
+        gua.append((
+            positions[i],
+            name,
+            color,
+            VALUE_MAP.get(name, 0)
+        ))
     return gua
 
 def generate_full_life_gua():
-    """
-    【新增】全盤流年：生成一副完整的32支棋，並切分為不同年齡階段。
-    回傳格式：Dictionary，Key為年齡層，Value為該層的5支棋卦象。
-    """
-    # 1. 建立完整的32支象棋
+    """全盤流年：生成一副完整的32支棋。"""
     full_deck = []
-    # 紅方 (16支)
+    # 紅方
     full_deck.append(('帥', '紅'))
     full_deck.extend([('仕', '紅')] * 2)
     full_deck.extend([('相', '紅')] * 2)
@@ -33,7 +40,7 @@ def generate_full_life_gua():
     full_deck.extend([('傌', '紅')] * 2)
     full_deck.extend([('炮', '紅')] * 2)
     full_deck.extend([('兵', '紅')] * 5)
-    # 黑方 (16支)
+    # 黑方
     full_deck.append(('將', '黑'))
     full_deck.extend([('士', '黑')] * 2)
     full_deck.extend([('象', '黑')] * 2)
@@ -42,23 +49,18 @@ def generate_full_life_gua():
     full_deck.extend([('包', '黑')] * 2)
     full_deck.extend([('卒', '黑')] * 5)
     
-    # 2. 徹底洗牌
     random.shuffle(full_deck)
     
-    # 3. 分配到年齡階段 (每組5支，共需30支，剩2支備用)
-    # 依據圖片架構：總格通常由核心運勢決定，這裡我們先排布流年
     life_stages = ["11~20歲", "21~30歲", "31~40歲", "41~50歲", "51~60歲", "61~70歲"]
     full_gua = {}
     
     start_index = 0
-    positions = [1, 2, 3, 4, 5] # 每個階段都對應 中、左、右、上、下
+    positions = [1, 2, 3, 4, 5]
     
     for stage in life_stages:
-        # 取出5支
         stage_pieces_raw = full_deck[start_index : start_index + 5]
         start_index += 5
         
-        # 格式化為卦象結構 (pos, name, color, value)
         stage_gua = []
         for i in range(5):
             name, color = stage_pieces_raw[i]
@@ -68,15 +70,10 @@ def generate_full_life_gua():
                 color,
                 VALUE_MAP.get(name, 0)
             ))
-        
         full_gua[stage] = stage_gua
 
-    # 剩餘的棋子 (可以用於 71-80 或 晚年總評)
     full_gua["餘棋"] = full_deck[30:]
-    
     return full_gua
-
-# --- 以下維持原有的判斷邏輯函數 (is_all_same_color, can_eat 等) ---
 
 def is_all_same_color(current_gua):
     if not current_gua: return True
