@@ -1,310 +1,282 @@
 import streamlit as st
 import pandas as pd
-import altair as alt
+import time
+# 修正導入：從同級檔案導入
+from data import ATTRIBUTES, POSITION_MAP, get_image_path, GEOMETRY_RELATION
+from rules import generate_random_gua, check_exemption, calculate_net_gain_from_gua, analyze_health_and_luck, is_all_same_color, check_career_pattern, check_wealth_pattern, check_consumption_at_1_or_5, check_interference
 
-# ────────────── Page Config & CSS ──────────────
-st.set_page_config(page_title="Tilandky 媽媽覺察陪伴室", layout="wide", page_icon="🧘‍♀️")
+# ----------------------------------------------
+# 輔助函數
+# ----------------------------------------------
+def display_piece(gua_data, pos_num):
+    """輔助函數：用於顯示單個棋子的圖片和位置信息"""
+    piece = next(p for p in gua_data if p[0] == pos_num)
+    name, color = piece[1], piece[2]
+    image_path = get_image_path(name, color) 
+    
+    st.markdown(f"<p style='text-align: center; font-size: 14px; margin-bottom: 0;'>{POSITION_MAP[pos_num]['名稱']} ({pos_num})</p>", unsafe_allow_html=True)
+    if image_path:
+        st.image(image_path, caption=f"{color}{name}", width=90) 
+    st.markdown(f"<p style='text-align: center; font-size: 10px;'>{POSITION_MAP[pos_num]['關係']}</p>", unsafe_allow_html=True)
 
-# 定義品牌色
-COLOR_PRIMARY = "#073B4C"
-COLOR_SECONDARY = "#118AB2"
-COLOR_ACCENT_GREEN = "#06D6A0"
-COLOR_ACCENT_YELLOW = "#FFD166"
-COLOR_ACCENT_RED = "#FF6B6B"
-
-st.markdown(
-    f"""<style>
-    /* 全局字體與背景 */
-    .stApp {{
-        background-color: #f8fafc;
-        font-family: 'Inter', 'Noto Sans TC', sans-serif;
-    }}
-    
-    /* Hero Section */
-    .hero {{
-        padding: 3rem 2rem;
-        text-align: center;
-        background-color: {COLOR_PRIMARY};
-        color: white;
-        border-radius: 0 0 20px 20px;
-        margin-bottom: 2rem;
-    }}
-    .hero h1 {{
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-    }}
-    .hero p {{
-        font-size: 1.2rem;
-        opacity: 0.9;
-        font-weight: 300;
-    }}
-    
-    /* 卡片樣式 */
-    div[data-testid="stContainer"] {{
-        background-color: #ffffff;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid #e2e8f0;
-    }}
-    
-    /* 標題樣式 */
-    h2 {{
-        color: {COLOR_SECONDARY};
-        font-weight: 700 !important;
-        text-align: center;
-        margin-bottom: 1.5rem !important;
-    }}
-    h3 {{
-        color: {COLOR_PRIMARY};
-        font-weight: 600 !important;
-    }}
-    
-    /* CTA 按鈕 */
-    .btn-cta {{
-        display: inline-block;
-        padding: 12px 30px;
-        background-color: {COLOR_SECONDARY};
-        color: white !important;
-        text-decoration: none;
-        border-radius: 8px;
-        font-weight: bold;
-        font-size: 1.1rem;
-        margin-top: 20px;
-        text-align: center;
-        width: 100%;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 6px rgba(17, 138, 178, 0.3);
-    }}
-    .btn-cta:hover {{
-        background-color: #0c6a8a;
-        transform: translateY(-2px);
-    }}
-    
-    /* 流程箭頭 */
-    .flow-arrow {{
-        text-align: center;
-        font-size: 2rem;
-        color: {COLOR_SECONDARY};
-        margin: 10px 0;
-        opacity: 0.6;
-    }}
-    
-    /* Footer */
-    .footer {{
-        text-align: center;
-        padding: 2rem;
-        color: #64748b;
-        font-size: 0.9rem;
-        background-color: #f1f5f9;
-        margin-top: 3rem;
-        border-top: 1px solid #e2e8f0;
-    }}
-    </style>""",
-    unsafe_allow_html=True,
+# ----------------------------------------------
+# 頁面配置與自定義 CSS
+# ----------------------------------------------
+st.set_page_config(
+    page_title="專業象棋占卜系統 - 象卜",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+st.markdown("""
+<style>
+#MainMenu {visibility: hidden;} footer {visibility: hidden;}
+h1 {color: #B22222; font-family: 'serif'; text-shadow: 1px 1px 2px #000000;}
+h2, h3 {color: #C0C0C0; border-left: 5px solid #8B0000; padding-left: 15px; margin-top: 20px;}
+</style>
+""", unsafe_allow_html=True)
 
-# ────────────── Data Preparation ──────────────
+st.title("🔮 專業象棋占卜系統：洞悉棋局，掌握人生格局")
+st.markdown("---")
 
-# 1. 媽媽精力分配數據 (Donut Chart Data)
-energy_data = pd.DataFrame({
-    'Role': ['媽媽角色 (育兒/家務)', '伴侶角色 (夫妻關係)', '職場角色 (工作/事業)', '自我時間 (休息/成長)'],
-    'Value': [40, 20, 30, 10],
-    'Color': [COLOR_SECONDARY, COLOR_ACCENT_GREEN, COLOR_ACCENT_YELLOW, COLOR_ACCENT_RED]
-})
+# ----------------------------------------------
+# 側邊欄控制與輸入
+# ----------------------------------------------
+if 'reroll_count' not in st.session_state: st.session_state.reroll_count = 0
+if 'final_result_status' not in st.session_state: st.session_state.final_result_status = "INIT"
+if 'message' not in st.session_state: st.session_state.message = ""
 
-# 2. 核心卡點數據 (Bar Chart Data)
-pain_point_data = pd.DataFrame({
-    'PainPoint': [
-        '自我愧疚 (覺得自己不夠好)', 
-        '伴侶衝突 (缺乏神隊友支援)', 
-        '職涯焦慮 (失去自我價值)', 
-        '原生家庭影響 (複製舊模式)', 
-        '金錢匱乏感 (對未來不安)'
-    ],
-    'Percentage': [85, 78, 65, 60, 50]
-})
-
-# 3. TRUST 系統數據
-trust_steps = [
-    {
-        "step": "T - Truth (真實/洞察)",
-        "desc": "看清「系統藍圖」，停止自我攻擊。我們將診斷妳的真實卡點，而不是表層問題。",
-        "items": ["📋 深度系統診斷報告書", "✨ 瑪雅圖騰 靈魂藍圖分析 (個人+合盤)"]
-    },
-    {
-        "step": "R - Reframe (重塑/釋放)",
-        "desc": "清除「潛意識病毒」，安裝「支持性信念」。透過日常覺察抓取舊模式，並用希塔療癒重塑。",
-        "items": ["🧠 西塔療癒 潛意識除錯 (抓Bug/安裝新程式)", "🎧 Tilandky 每日覺察練功房 (情境SOP音檔)"]
-    },
-    {
-        "step": "U - Union (合一/目標)",
-        "desc": "從「我」的覺察，擴展到「我們」的家庭願景。釐清妳真正渴望的平衡狀態。",
-        "items": ["🎯 家庭合一 願景目標書 (妳的北極星)"]
-    },
-    {
-        "step": "S - Strategy (策略/行動)",
-        "desc": "讓「覺察」不只是空想，而是「日常」的具體行動。提供客製化的溝通腳本與天賦引導策略。",
-        "items": ["📝 客製化 親子/伴侶行動計劃書 (溝通腳本)", "💬 6次陪跑 專案檢核系統 (每週覺察回報)"]
-    },
-    {
-        "step": "T - Transformation (轉化/成果)",
-        "desc": "慶祝轉化，將「覺察」內化為妳的DNA。看見真實的改變，並獲得持續支持的藍圖。",
-        "items": ["📈 個人轉化 成果報告 (Before/After 對比)", "🔄 未來藍圖 與 複訓計畫 (持續支持)"]
-    }
-]
-
-# ────────────── Main Content ──────────────
-
-# 1. Hero Section
-st.markdown(
-    """
-    <div class="hero">
-        <h1>Tilandky 日常覺察陪伴室</h1>
-        <p>用「工程師邏輯」與「男性視角」，數據化妳的內在轉化</p>
-    </div>
-    """, 
-    unsafe_allow_html=True
-)
-
-# 2. 現狀分析 (Charts)
-st.markdown("## 這是否是妳的日常？")
-st.caption("身為 25-45 歲的媽媽，妳是否也常在「媽媽、伴侶、職場」等多重角色中掙扎？")
-
-col_chart1, col_chart2 = st.columns(2)
-
-with col_chart1:
-    with st.container(border=True):
-        st.markdown("### 媽媽的精力分配")
-        st.write("妳的精力與時間總是被各種角色佔據，留給「自我」的空間少之又少。")
-        
-        # Altair Donut Chart
-        base = alt.Chart(energy_data).encode(
-            theta=alt.Theta("Value", stack=True)
-        )
-        pie = base.mark_arc(innerRadius=60).encode(
-            color=alt.Color("Role", scale=alt.Scale(domain=energy_data['Role'].tolist(), range=energy_data['Color'].tolist()), legend=dict(orient="bottom")),
-            order=alt.Order("Value", sort="descending"),
-            tooltip=["Role", "Value"]
-        )
-        st.altair_chart(pie, use_container_width=True)
-
-with col_chart2:
-    with st.container(border=True):
-        st.markdown("### 核心卡點分析")
-        st.write("根據 300+ 位媽媽的諮詢數據，這些是最常見的內在卡點：")
-        
-        # Altair Bar Chart
-        bar = alt.Chart(pain_point_data).mark_bar(color=COLOR_SECONDARY, cornerRadiusEnd=4).encode(
-            x=alt.X('Percentage', title='回報比例 (%)'),
-            y=alt.Y('PainPoint', sort='-x', title=None),
-            tooltip=['PainPoint', 'Percentage']
-        ).properties(height=300)
-        st.altair_chart(bar, use_container_width=True)
-
-st.info("💡 **核心洞察**：所有外在的議題（親子、伴侶、金錢），其實都是妳與「自己」關係的延伸。")
-
-# 3. 比較優勢 (Comparison)
-st.divider()
-st.markdown("## Tilandky 的獨特之處：理性與溫暖的結合")
-
-col_comp1, col_comp2 = st.columns(2)
-
-with col_comp1:
-    with st.container(border=True):
-        st.markdown("### 🌀 傳統身心靈")
-        st.markdown("""
-        * 🌫️ 觀點抽象，難以落地
-        * 😢 容易陷入純粹的情緒宣洩
-        * ❓ 缺乏系統，問題重複發生
-        * ⚖️ 可能帶有隱藏的價值評斷
-        """)
-
-with col_comp2:
-    # 使用 info 框來強調優勢，背景會有淡藍色
-    st.info("### ⚙️ Tilandky 陪伴室 (冠龍)")
-    st.markdown("""
-    * **工程師邏輯**：提供可執行的 SOP 與行動清單
-    * **男性視角**：理性分析，幫妳翻譯隊友的語言
-    * **系統化除錯**：找出問題根源 (Bug) 而非只解症狀
-    * **溫暖陪伴**：不帶評斷的傾聽樹洞
+with st.sidebar:
+    st.header("天機奧秘，誠心求卜")
+    
+    st.markdown("### ⚠️ 占卜前重要須知")
+    st.warning("""
+        **1. 態度為先：** 象棋卜卦磁場強大，請在提問時保持**尊重及恭敬**。
+        **2. 不成卦規則：** 卦象二次仍不成，暗示**「不會做也不會成」**。
     """)
-
-# 4. TRUST 系統 (Process)
-st.divider()
-st.markdown("## TRUST 系統：妳的 6 個月轉化藍圖")
-st.markdown("<div style='text-align: center; margin-bottom: 30px; color: #666;'>這是一套被 300+ 媽媽驗證的系統化流程。核心引擎就是貫穿全程的「日常覺察」。</div>", unsafe_allow_html=True)
-
-# 這裡使用一個垂直的佈局來呈現流程
-col_center = st.columns([1, 2, 1]) # 讓內容集中在中間
-
-with col_center[1]:
-    for i, step in enumerate(trust_steps):
-        with st.container(border=True):
-            st.markdown(f"### {step['step']}")
-            st.write(step['desc'])
-            
-            # 交付項目區塊
-            st.markdown(
-                """
-                <div style="background-color: #f0f9ff; padding: 10px; border-radius: 5px; margin-top: 10px;">
-                <strong>📦 交付項目：</strong>
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-            for item in step['items']:
-                st.markdown(f"- {item}")
-        
-        # 除了最後一個步驟外，顯示箭頭
-        if i < len(trust_steps) - 1:
-            st.markdown('<div class="flow-arrow">⬇</div>', unsafe_allow_html=True)
-
-# 5. 社會證明 (Social Proof)
-st.divider()
-st.markdown("## 真實的轉化，來自數據的驗證")
-col_stat1, col_stat2, col_stat3 = st.columns([1, 2, 1])
-with col_stat2:
-    st.markdown(
-        f"""
-        <div style="text-align: center;">
-            <p style="font-size: 1.2rem; color: #666;">這不只是空談，這套系統已經成功協助...</p>
-            <div style="font-size: 5rem; font-weight: 800; color: {COLOR_SECONDARY}; line-height: 1;">300+</div>
-            <p style="font-size: 1.5rem; font-weight: 600; color: {COLOR_PRIMARY};">位媽媽找回內在的平靜與力量</p>
-        </div>
-        """,
-        unsafe_allow_html=True
+    st.markdown("---")
+    
+    gender = st.selectbox("1. 詢問性別", ["男", "女"])
+    
+    query_type = st.selectbox(
+        "2. 詢問類型", 
+        [
+            "解全盤 (11 步綜合解析)", 
+            "問運勢", 
+            "事業查詢", 
+            "前世格局、關係", 
+            "健康分析", 
+            "投資/財運", 
+            "感情/關係",
+            "離婚議題"
+        ]
     )
+    
+    if query_type == "投資/財運":
+        st.info("💡 **重要：** 財運占卜必須有時間依據。")
+        st.date_input("3. 請輸入預計**獲利或事件發生的時間點**", value=None)
+    
+    if st.button("開始占卜：擲出五支棋"):
+        new_gua = generate_random_gua()
+        if is_all_same_color(new_gua):
+            st.session_state.reroll_count += 1
+            if st.session_state.reroll_count == 1:
+                with st.spinner('偵測到不成卦 (全黑/全紅)，正在進行第二次重抽...'): 
+                    time.sleep(1)
+                    new_gua = generate_random_gua()
+                if is_all_same_color(new_gua):
+                    st.session_state.current_gua = new_gua
+                    st.session_state.message = "❌ **最終警示：** 卦象連續兩次為全黑/全紅，暗示**「不會做也不會成」**。本次分析已中止。"
+                    st.session_state.final_result_status = "REJECTED"
+                else:
+                    st.session_state.current_gua = new_gua
+                    st.session_state.message = "🚨 第一次卦象為全黑/全紅，已重抽成功並得到有效卦象。"
+                    st.session_state.final_result_status = "VALID"
+            else:
+                 st.session_state.message = "請刷新頁面或清除緩存後，重新開始占卜。"
+                 st.session_state.final_result_status = "REJECTED" 
+        else:
+            st.session_state.current_gua = new_gua
+            st.session_state.reroll_count = 0
+            st.session_state.message = "卦象已成功生成。"
+            st.session_state.final_result_status = "VALID"
 
-# 6. CTA (Call to Action)
-st.divider()
-col_cta1, col_cta2, col_cta3 = st.columns([1, 2, 1])
+        st.success(st.session_state.message)
+        st.experimental_rerun()
 
-with col_cta2:
-    with st.container(border=True):
-        st.markdown("<h3 style='text-align: center;'>🚀 開始妳的轉化第一步</h3>", unsafe_allow_html=True)
-        st.write("妳不需要立刻承諾 6 個月。從一個 20 分鐘的「工程師邏輯診斷」開始。我會用最高效率的方式，幫妳釐清妳的「真實卡點」。")
+
+# ----------------------------------------------
+# 主頁面流程控制與守衛
+# ----------------------------------------------
+if st.session_state.final_result_status == "INIT": st.info("請在左側邊欄輸入資訊，並點擊按鈕開始您的卦象解析。"); st.stop()
+if st.session_state.final_result_status == "REJECTED": st.error(st.session_state.message); st.stop() 
+
+if query_type == "離婚議題" and gender == "男":
+    st.error("⚠️ **規則限制：** 根據象棋占卜秘笈，**離婚議題只能解析女性的命盤**。"); st.warning("請將左側的「詢問性別」選項改為**『女』**，或選擇其他相關的感情議題。"); st.stop()
+
+# ----------------------------------------------
+# 有效卦象分析 (VALID)
+# ----------------------------------------------
+current_gua = st.session_state.current_gua
+analysis_results = calculate_net_gain_from_gua(current_gua) 
+health_analysis = analyze_health_and_luck(current_gua)
+
+st.header("✅ 當前卦象與核心能量場")
+col_u1, col_u2, col_u3 = st.columns([1, 1, 1])
+with col_u2: display_piece(current_gua, 4)
+col_m1, col_m2, col_m3 = st.columns([1, 1, 1])
+with col_m1: display_piece(current_gua, 2)
+with col_m2: display_piece(current_gua, 1)
+with col_m3: display_piece(current_gua, 3)
+col_d1, col_d2, col_d3 = st.columns([1, 1, 1])
+with col_d2: display_piece(current_gua, 5)
+
+st.markdown("---")
+
+# ----------------------------------------------
+# 數據分頁呈現 (Tabs)
+# ----------------------------------------------
+tab1, tab2, tab3 = st.tabs(["📊 總收穫與付出", "✨ 格局與特質分析", "🧬 健康與關係"])
+
+# Tab 1: 總收穫與付出
+with tab1:
+    st.header(f"⚖️ {query_type} 總結：收穫與付出")
+    col_g, col_c, col_n = st.columns(3)
+    col_g.metric("總收穫 (Gain)", f"{analysis_results['gain']}", "棋力價值")
+    col_c.metric("總付出 (Cost)", f"{analysis_results['cost']}", "行動與運作成本")
+    col_n.metric("最終淨盈餘/虧損", f"{analysis_results['net_gain']}", 
+                 delta="獲利" if analysis_results['net_gain'] > 0 else "虧損")
+    
+    if query_type == "投資/財運":
+        if analysis_results['net_gain'] > 0: st.success("🎉 **恭喜！** 收穫大於付出，投資獲利機會高。")
+        else: st.error("⚠️ **提醒！** 付出大於收穫，建議謹慎。")
+    
+    with st.expander("🛠️ 詳細吃子與續攻計算"):
+        interactions_df = pd.DataFrame(analysis_results['interactions'])
+        if not interactions_df.empty:
+            interactions_df['結果'] = interactions_df.apply(lambda row: "全吃" if row['is_full_eat'] else "半吃", axis=1)
+            interactions_df['eater_pos_name'] = interactions_df['eater_pos'].apply(lambda x: POSITION_MAP[x]['名稱'])
+            interactions_df['target_pos_name'] = interactions_df['target_pos'].apply(lambda x: POSITION_MAP[x]['名稱'])
+            st.dataframe(interactions_df[['eater_name', 'eater_pos_name', 'target_name', 'target_pos_name', '結果', 'value']], use_container_width=True)
+        else:
+            st.info("棋子間無有效的吃子或能量流動。")
+
+
+# Tab 2: 格局與特質分析
+with tab2:
+    st.header("✨ 特殊格局解析")
+    
+    # I. 問運勢專項解析
+    if query_type == "問運勢":
+        st.subheader("☀️ 當前運勢總結與分析")
+        red_count = health_analysis['red_count']
+        black_count = health_analysis['black_count']
+        st.markdown("**1. 氣血與情緒狀態 (@運勢解法)**")
+        if (red_count == 2 and black_count == 3) or (red_count == 3 and black_count == 2): st.success("🎉 **二三配/三二配：** 情緒穩定，快樂指數高！")
+        elif (red_count == 1 and black_count == 4) or (red_count == 4 and black_count == 1): st.warning("🚨 **一四配/四一配：** 情緒起伏較大，需留意心境調整。")
+        else: st.info("棋色比例中等，情緒穩定度中等。")
+
+        net_gain = analysis_results['net_gain']
+        st.markdown("**2. 能量流動與總 Outlook**")
+        if net_gain > 5.0: st.success(f"🚀 **運勢強勁：** 淨收穫 {net_gain}，能量磁場強大，可大膽前進！")
+        elif net_gain < -5.0: st.error(f"📉 **運勢低迷：** 淨虧損 {abs(net_gain)}，需保守行事，防範消耗格影響。")
+        else: st.info("運勢平穩，重點在於人際關係與特定格局。")
+             
+        st.markdown("---")
+        st.subheader("⚠️ 運勢中的潛在格局")
+        exemption = check_exemption(current_gua)
+        if exemption: st.error(f"主要干擾/助力格局：{exemption[0]}")
         
-        st.markdown(
-            f"""
-            <div style="text-align: center; background-color: #f8fafc; padding: 20px; border-radius: 10px; margin-top: 20px;">
-                <p style="font-size: 1.2rem; font-weight: 600; color: {COLOR_PRIMARY};">前導諮詢 (20分鐘 邏輯診斷)</p>
-                <p style="font-size: 3rem; font-weight: 800; color: {COLOR_SECONDARY}; margin: 10px 0;">$200</p>
-                <a href="https://line.me/R/ti/p/%40690ZLAGN" target="_blank" class="btn-cta">
-                    點擊預約妳的 20 分鐘診斷
-                </a>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        if check_career_pattern(current_gua): st.success("運勢中帶有事業衝勁 (車傌包)。")
+        if check_wealth_pattern(current_gua): st.success("運勢中帶有貴人相助 (將士相)。")
 
-# ────────────── Footer ──────────────
-st.markdown(
-    """
-    <div class="footer">
-      <p>© 2025 Tilandky 陪你聊 | 親子關係陪伴室. All rights reserved.</p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+    # II. 事業查詢專項解析
+    elif query_type == "事業查詢":
+        st.subheader("💼 核心事業格局分析")
+        is_career = check_career_pattern(current_gua)
+        if is_career: st.success("🎉 **恭喜！** 卦象偵測到**事業格 (車傌包)**！"); st.markdown("👉 **結論：** 具有做事業的氣勢，敢衝、能量磁場強。但需注意，此格局**不利感情卦**。")
+        else: st.info("卦象未偵測到事業格。")
+        is_wealth = check_wealth_pattern(current_gua)
+        if is_wealth: st.success("💰 **富貴格 (將士相)：** 有人幫做事，自己行動力弱。");
+        else: st.info("未偵測到富貴格。")
+
+    # III. 通用格局檢查
+    else:
+        exemption = check_exemption(current_gua)
+        if exemption: st.success(f"**🎉 偵測到重要格局：** {exemption[0]}！")
+        else: st.info("未偵測到特殊格局。")
+        
+        st.markdown("---")
+        st.subheader("💡 棋子特質與運勢建議")
+        gua_data = [(p[2], p[1], ATTRIBUTES.get(p[1], {}).get('特質', '')) for p in current_gua]
+        gua_df = pd.DataFrame(gua_data, columns=['顏色', '棋子', '特質解析'])
+        st.table(gua_df)
+
+# Tab 3: 健康與關係
+with tab3:
+    st.header("🧬 健康與關係總評")
+    
+    # I. 天地人三才與貴人運
+    st.subheader("🍀 天地人三才與貴人運")
+    trinity_cols = st.columns(3)
+    if not any(p[0] == 4 for p in current_gua): trinity_cols[0].error("缺天 (長輩)：較鐵齒，需多與長輩維持好關係。")
+    else: trinity_cols[0].success("天格穩固")
+    if not any(p[0] in [1, 2, 3] for p in current_gua): trinity_cols[1].error("缺人 (平輩)：易目中無人，人和較弱。")
+    else: trinity_cols[1].success("人格穩固")
+    if not any(p[0] == 5 for p in current_gua): trinity_cols[2].error("缺地 (晚輩/踏實感)：缺乏踏實感，錢留不住，建議穩定投資。")
+    else: trinity_cols[2].success("地格穩固")
+        
+    st.markdown("---")
+
+    # II. 離婚格局解析 (僅限女性/離婚議題)
+    if query_type == "離婚議題" and gender == "女":
+        st.subheader("💔 離婚格局專項檢查 (女性命盤)")
+        piece_1_name = next(p[1] for p in current_gua if p[0] == 1)
+        divorce_pieces = ['將', '帥', '黑士', '黑車']
+        if piece_1_name in divorce_pieces or any(p[1] in ['將', '帥'] for p in current_gua):
+            st.error(f"⚠️ **高風險警示：** 中間 ({piece_1_name}) 或總格出現將帥/黑士/黑車，易導致關係強勢或出現問題。")
+        else: st.success("核心棋子穩定，無明顯離婚高風險特質。")
+        st.write("👉 **好朋友格在 2-3 或 4-5：** 需留意關係的過度平淡或聚少離多。")
+
+    # III. 感情/關係格局解析 (通用情感)
+    elif query_type == "感情/關係":
+        st.subheader("💖 感情與關係格局解析")
+        pao_bao_pieces = [p for p in current_gua if p[1] in ['炮', '包']]
+        if pao_bao_pieces:
+            pao_bao_info = [f"{p[2]}{p[1]} (位: {POSITION_MAP[p[0]]['名稱']})" for p in pao_bao_pieces]
+            st.success(f"🎉 **桃花/人緣旺：** 卦象中出現 {len(pao_bao_pieces)} 支炮/包棋子 ({', '.join(pao_bao_info)})。")
+        else: st.info("桃花/人緣能量較為平穩。")
+        
+        piece_2 = next(p for p in current_gua if p[0] == 2); piece_3 = next(p for p in current_gua if p[0] == 3)
+        is_friend_2_3 = (piece_2[1] in ['炮', '包'] and piece_3[1] in ['炮', '包'])
+        if is_friend_2_3: st.warning(f"⚠️ **好朋友格 (2-3)：** 關係可能過於平淡，像朋友多過像情人。")
+        else: st.success("情感關係互動正常。")
+
+    # IV. 前世格局、關係解析
+    elif query_type == "前世格局、關係":
+        st.subheader("📜 前世格局與今生關係解讀")
+        piece_1 = next(p for p in current_gua if p[0] == 1); name_1 = piece_1[1]
+        identity_map = {'將': '將軍', '帥': '領兵作戰將領', '士': '當官', '象': '修行人', '相': '修行人', '包': '美麗帥氣', '炮': '美麗帥氣', '兵': '生意人', '卒': '生意人'}
+        st.write(f"👉 您前世的可能身份是：**{identity_map.get(name_1, '不明確')}**。")
+        st.caption("斜對、平行、隔開關係需查閱秘笈細則。")
+
+    # V. 解全盤進階項目 (專家優化)
+    elif query_type == "解全盤 (11 步綜合解析)":
+        st.subheader("🌟 解全盤 (11 步) - 終極解析")
+        with st.expander("詳細解析項目"):
+            is_consumption_1_5 = check_consumption_at_1_or_5(current_gua) 
+            piece_1 = next(p for p in current_gua if p[0] == 1); piece_5 = next(p for p in current_gua if p[0] == 5)
+            st.markdown("**1. 總格 1 和 5 (子女/不孕機會)**")
+            if is_consumption_1_5: st.error("🚨 **高風險警告：** 總格 1 和 5 處於**消耗格**，**不孕機會高**！")
+            else: st.success("總格 1 和 5 無明顯消耗格，不孕風險低。")
+            
+            st.markdown("**3. 干擾磁場確認 (小人、卡陰)**")
+            interference_events = check_interference(current_gua) 
+            if interference_events:
+                st.error("⚠️ **干擾磁場警示！** 偵測到核心位置被攻擊：")
+                for event in interference_events: st.write(f"  - **{event['attacker']}** 攻擊 **{event['target']}**，類型：*{event['type']}*")
+            else: st.success("磁場穩定，核心位置未受到外部棋子干擾。")
+    
+    # VI. 通用健康與人際關係 (適用於所有主題的基礎分析)
+    st.markdown("---")
+    st.subheader("通用健康與人際關係基礎分析")
+    st.write("請參考上方五行與氣血警示。")
