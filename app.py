@@ -26,13 +26,20 @@ def display_piece(gua_data, pos_num):
 # ----------------------------------------------
 # 頁面配置
 # ----------------------------------------------
-st.set_page_config(page_title="專業象棋占卜系統 - 全盤流年版", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="專業象棋占卜系統", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 h1 {color: #B22222; font-family: 'serif'; text-shadow: 1px 1px 2px #000000;}
 h2, h3 {color: #C0C0C0; border-left: 5px solid #8B0000; padding-left: 15px; margin-top: 20px;}
 .stage-box {border: 1px solid #444; padding: 10px; margin-bottom: 20px; border-radius: 5px; background-color: #262730;}
+/* 按鈕樣式優化 */
+div.stButton > button {
+    width: 100%;
+    font-weight: bold;
+    border-radius: 8px;
+    height: 3em;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -51,58 +58,97 @@ if 'current_gua' not in st.session_state: st.session_state.current_gua = []
 
 with st.sidebar:
     st.header("天機奧秘，誠心求卜")
-    st.warning("**全盤流年**：將使用一副完整32支棋，排列出您的一生運勢架構。")
-    gender = st.selectbox("1. 詢問性別", ["男", "女"])
-    query_type = st.selectbox("2. 詢問類型", ["全盤流年 (11~80歲完整排盤)", "單卦問事 (運勢/財運/感情)"])
+    st.markdown("### ⚠️ 占卜前重要須知")
+    st.warning("**1. 態度為先**：請保持尊重及恭敬。\n**2. 不成卦**：兩次全黑/全紅，暗示不可為。")
     
-    current_sub_query_selection = "問運勢"
-    if query_type == "單卦問事 (運勢/財運/感情)":
-        current_sub_query_selection = st.selectbox("3. 詳細事項", ["問運勢", "事業查詢", "前世格局", "健康分析", "投資/財運", "感情/關係", "離婚議題"])
-        if current_sub_query_selection == "投資/財運":
-            st.date_input("4. 獲利時間點", value=None)
+    st.markdown("---")
+    st.header("1. 基本資料")
+    gender = st.selectbox("詢問性別", ["男", "女"])
     
-    if st.button("開始排盤 / 占卜"):
-        if query_type == "全盤流年 (11~80歲完整排盤)":
+    st.markdown("---")
+    
+    # === 雙模式並列顯示 (優化介面) ===
+    
+    # 區塊 A: 全盤流年
+    st.header("2. 選擇占卜模式")
+    
+    with st.container():
+        st.subheader("🅰️ 全盤流年 (一生大運)")
+        st.info("使用完整32支棋，排布11~80歲人生架構。")
+        
+        # 全盤按鈕
+        if st.button("🚀 排布全盤流年", type="primary"):
             st.session_state.current_mode = "FULL"
-            with st.spinner('排布全盤流年中...'):
+            with st.spinner('正在洗牌、切牌、排布全盤流年...'):
                 time.sleep(1.5)
                 st.session_state.full_life_gua = generate_full_life_gua()
                 st.session_state.final_result_status = "VALID"
                 st.session_state.message = "全盤流年排佈完成！"
-        else:
+            st.rerun()
+
+    st.markdown("---")
+
+    # 區塊 B: 單卦問事
+    with st.container():
+        st.subheader("🅱️ 單卦問事 (特定問題)")
+        
+        # 單卦選項
+        current_sub_query_selection = st.selectbox(
+            "選擇問題類別", 
+            ["問運勢", "事業查詢", "前世格局", "健康分析", "投資/財運", "感情/關係", "離婚議題"]
+        )
+        
+        if current_sub_query_selection == "投資/財運":
+            st.date_input("預計獲利時間點", value=None)
+            
+        # 單卦按鈕
+        if st.button("🔮 開始單卦占卜"):
             st.session_state.current_mode = "SINGLE"
             st.session_state.sub_query = current_sub_query_selection
+            
+            # 執行抽卦與重抽邏輯
             new_gua = generate_random_gua()
             if is_all_same_color(new_gua):
                 st.session_state.reroll_count += 1
                 if st.session_state.reroll_count == 1:
-                    with st.spinner('不成卦，重抽中...'): 
+                    with st.spinner('不成卦 (全黑/全紅)，系統自動重抽中...'): 
                         time.sleep(1)
                         new_gua = generate_random_gua()
                     if is_all_same_color(new_gua):
                         st.session_state.current_gua = new_gua
-                        st.session_state.message = "❌ 兩次不成卦，暗示不可為。"
+                        st.session_state.message = "❌ 兩次不成卦，暗示「不會做也不會成」。"
                         st.session_state.final_result_status = "REJECTED"
                     else:
                         st.session_state.current_gua = new_gua
-                        st.session_state.message = "🚨 重抽成功。"
+                        st.session_state.message = "🚨 第一次不成卦，已自動重抽並成功。"
                         st.session_state.final_result_status = "VALID"
                 else:
-                     st.session_state.message = "請刷新重試。"
+                     st.session_state.message = "請刷新頁面重試。"
                      st.session_state.final_result_status = "REJECTED" 
             else:
                 st.session_state.current_gua = new_gua
                 st.session_state.reroll_count = 0
                 st.session_state.message = "卦象生成成功。"
                 st.session_state.final_result_status = "VALID"
-        st.success(st.session_state.message)
-        st.rerun()
+            
+            st.rerun()
 
-if st.session_state.final_result_status == "INIT": st.info("請點擊左側按鈕開始。"); st.stop()
-if st.session_state.final_result_status == "REJECTED": st.error(st.session_state.message); st.stop() 
+# ----------------------------------------------
+# 主頁面顯示邏輯
+# ----------------------------------------------
+if st.session_state.final_result_status == "INIT": 
+    st.info("👈 請在左側側邊欄選擇 **「全盤流年」** 或 **「單卦問事」** 開始。"); 
+    st.stop()
 
-if query_type == "離婚議題" and gender == "男":
-    st.error("⚠️ 規則限制：離婚議題僅限女性命盤。"); st.stop()
+if st.session_state.final_result_status == "REJECTED": 
+    st.error(st.session_state.message); 
+    st.stop() 
+
+# 離婚議題性別守衛 (如果單卦選了離婚且是男生)
+if st.session_state.current_mode == "SINGLE" and st.session_state.sub_query == "離婚議題" and gender == "男":
+    st.error("⚠️ **規則限制：** 根據象棋占卜秘笈，**離婚議題只能解析女性的命盤**。"); 
+    st.warning("請將左側的「詢問性別」選項改為**『女』**，或選擇其他相關的感情議題。"); 
+    st.stop()
 
 # ==============================================================================
 # 模式 A: 全盤流年顯示
@@ -124,19 +170,15 @@ if st.session_state.current_mode == "FULL":
         st.markdown(f"<div class='stage-box'>", unsafe_allow_html=True)
         st.markdown(f"### 🗓️ {stage} 運勢")
         
+        # 視覺化排盤
         c1, c2, c3 = st.columns([1, 1, 1])
-        with c2: 
-            display_piece(gua, 4)
+        with c2: display_piece(gua, 4)
         c4, c5, c6 = st.columns([1, 1, 1])
-        with c4: 
-            display_piece(gua, 2)
-        with c5: 
-            display_piece(gua, 1)
-        with c6: 
-            display_piece(gua, 3)
+        with c4: display_piece(gua, 2)
+        with c5: display_piece(gua, 1)
+        with c6: display_piece(gua, 3)
         c7, c8, c9 = st.columns([1, 1, 1])
-        with c8: 
-            display_piece(gua, 5)
+        with c8: display_piece(gua, 5)
         
         st.markdown("---")
         col_res1, col_res2 = st.columns(2)
@@ -150,7 +192,7 @@ if st.session_state.current_mode == "FULL":
         else: 
             col_res2.info("格局：平穩發展")
             
-        # 加入該階段的三才缺失提示 (已修正縮排語法)
+        # 加入該階段的三才缺失提示
         trinity = analyze_trinity_detailed(gua)
         if trinity['missing_heaven']: 
             st.error(f"❌ 缺天：{trinity['missing_heaven']['reason']}")
@@ -252,7 +294,7 @@ elif st.session_state.current_mode == "SINGLE":
             for warn in health_analysis['health_warnings']: st.warning(warn)
 
         else:
-            # 默認顯示天地人三才分析 (已修正縮排語法)
+            # 默認顯示天地人三才分析
             st.subheader("🔍 天地人三才缺失檢測")
             cols = st.columns(3)
             
